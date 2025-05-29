@@ -1,41 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@clerk/clerk-react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { MoreDotIcon } from "../../icons";
 import CountryMap from "./CountryMap";
 
-// Add cache helper functions
-const CACHE_KEY = 'network_stats_cache';
-const CACHE_EXPIRY = 5 * 60 * 1000; // 5 minutes
-
 type CountryType = "Uganda" | "Kenya" | "Rwanda";
-
-interface CacheData {
-  timestamp: number;
-  smsHistory: SmsHistory[];
-  deliveryReports: DeliveryReport[];
-}
-
-const getCache = (): CacheData | null => {
-  const cached = localStorage.getItem(CACHE_KEY);
-  if (!cached) return null;
-  
-  const data = JSON.parse(cached);
-  if (Date.now() - data.timestamp > CACHE_EXPIRY) {
-    localStorage.removeItem(CACHE_KEY);
-    return null;
-  }
-  return data;
-};
-
-const setCache = (smsHistory: SmsHistory[], deliveryReports: DeliveryReport[]) => {
-  const cacheData: CacheData = {
-    timestamp: Date.now(),
-    smsHistory,
-    deliveryReports,
-  };
-  localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
-};
 
 interface SmsHistory {
   id: number;
@@ -61,57 +32,69 @@ interface NetworkData {
 export default function DemographicCard() {
   const [isOpen, setIsOpen] = useState(false);
   const [country, setCountry] = useState<CountryType>("Uganda");
-  const [smsHistory, setSmsHistory] = useState<SmsHistory[]>([]);
-  const [deliveryReports, setDeliveryReports] = useState<DeliveryReport[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-
-        // Check cache first
-        const cached = getCache();
-        if (cached) {
-          setSmsHistory(cached.smsHistory);
-          setDeliveryReports(cached.deliveryReports);
-          setIsLoading(false);
-          return;
+  const { getToken } = useAuth();
+  
+  const {
+    data: smsHistory = [] as SmsHistory[],
+    isLoading,
+    error: queryError
+  } = useQuery({
+    queryKey: ["sms-history", 0, 1000, true], // Using fixed values since we want all records
+    queryFn: async () => {
+      const token = await getToken();
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/user/api/v1/sms_history?skip=0&limit=1000`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
         }
+      );
 
-        // Fetch new data if no cache
-        const smsResponse = await fetch(
-          `https://luco-sms-api.onrender.com/api/v1/sms_history?user_id=1&skip=0&limit=1000`,
-          {
-            method: "GET",
-            headers: { Accept: "application/json" },
-          }
-        );
-        if (!smsResponse.ok) throw new Error("Failed to fetch SMS history");
-        const smsData: SmsHistory[] = await smsResponse.json();
-        setSmsHistory(smsData);
-
-        // Fetch delivery reports
-        const deliveryPromises = smsData.map((sms) =>
-          fetch(
-            `https://luco-sms-api.onrender.com/api/v1/delivery_report?user_id=1&sms_id=${sms.id}`
-          ).then((res) => res.json())
-        );
-        const deliveryData = await Promise.all(deliveryPromises);
-        setDeliveryReports(deliveryData);
-
-        // Cache the new data
-        setCache(smsData, deliveryData);
-        setError(null);
-      } catch (error) {
-        setError(error instanceof Error ? error.message : "Unknown error");
-      } finally {
-        setIsLoading(false);
+      if (!response.ok) {
+        if (response.status === 404) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail);
+        }
+        throw new Error("Failed to fetch SMS history");
       }
-    };
-    fetchData();
-  }, []);
+
+      return await response.json();
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: (failureCount, error) => {
+      if (error.message === "User not Found" || error.message === "No message found") {
+        return false;
+      }
+      return failureCount < 2;
+    },
+  });
+
+  const {
+    data: deliveryReports = [] as DeliveryReport[],
+    isLoading: isDeliveryLoading,
+  } = useQuery({
+    queryKey: ["delivery-reports", smsHistory],
+    queryFn: async () => {
+      if (!smsHistory.length) return [];
+      const token = await getToken();
+      const promises = smsHistory.map((sms: { id: unknown; }) => 
+        fetch(`${import.meta.env.VITE_API_URL}/user/api/v1/delivery_report/${sms.id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+        }).then(res => res.json())
+      );
+      return Promise.all<DeliveryReport>(promises);
+    },
+    enabled: Boolean(smsHistory.length),
+    staleTime: 5 * 60 * 1000,
+  });
 
   const countryPrefixes: Record<CountryType, string> = {
     Uganda: "+256",
@@ -121,7 +104,7 @@ export default function DemographicCard() {
 
   const getNetworkData = (): NetworkData[] => {
     // Filter SMS by country (based on recipient prefix)
-    const filteredSms = smsHistory.filter((sms) =>
+    const filteredSms = smsHistory.filter((sms: { recipient: string; }) =>
       sms.recipient.startsWith(countryPrefixes[country])
     );
     const filteredDelivery = deliveryReports.slice(0, filteredSms.length);
@@ -154,7 +137,7 @@ export default function DemographicCard() {
       networkData[network] = { customers: new Set(), sent: 0, total: 0 };
     });
 
-    filteredSms.forEach((sms, i) => {
+    filteredSms.forEach((sms: { network: string; recipient: string; }, i: number) => {
       const network = sms.network || getNetwork(sms.recipient);
       if (networkData[network]) {
         networkData[network].customers.add(sms.recipient);
@@ -262,16 +245,16 @@ export default function DemographicCard() {
         </div>
       </div>
 
-      {isLoading ? (
+      {isLoading || isDeliveryLoading ? (
         <>
           <div className="px-4 py-6 my-6 overflow-hidden border border-gray-200 rounded-2xl dark:border-gray-800 sm:px-6">
             <div className="w-full h-[212px] bg-gray-200 rounded-lg dark:bg-gray-700 animate-pulse"></div>
           </div>
           <NetworkSkeleton />
         </>
-      ) : error ? (
+      ) : queryError ? (
         <div className="p-4 text-center text-red-500 dark:text-red-400">
-          {error}
+          {queryError instanceof Error ? queryError.message : "An error occurred"}
         </div>
       ) : (
         <>

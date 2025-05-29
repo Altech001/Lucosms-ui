@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@clerk/clerk-react";
 import {
   Table,
   TableBody,
@@ -9,68 +11,83 @@ import {
 import Badge from "../ui/badge/Badge";
 import Button from "../ui/button/Button";
 
-interface SmsHistory {
+
+interface SMS {
   id: number;
-  recipient: string;
   message: string;
-  status: "sent" | "failed" | "pending";
+  recipient: string;
+  status: string;
   cost: number;
-  created_at: string;
 }
 
 export default function RecentOrders() {
-  const [smsHistory, setSmsHistory] = useState<SmsHistory[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { getToken } = useAuth();
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(3);
-  const [, setTotalItems] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "sent" | "pending" | "failed">("all");
   const [showAll, setShowAll] = useState(false);
+  const queryClient = useQueryClient();
 
-  const fetchSmsHistory = useCallback(async () => {
-    try {
-      setIsLoading(true);
+  const {
+    data: smsHistory = [],
+    isLoading,
+    error  } = useQuery({
+    queryKey: ["sms-history", currentPage, itemsPerPage, showAll],
+    queryFn: async () => {
+      const token = await getToken();
       const skip = showAll ? 0 : (currentPage - 1) * itemsPerPage;
       const limit = showAll ? 1000 : itemsPerPage;
       const response = await fetch(
-        `https://luco-sms-api.onrender.com/api/v1/sms_history?user_id=1&skip=${skip}&limit=${limit}`,
+        `${import.meta.env.VITE_API_URL}/user/api/v1/sms_history?skip=${skip}&limit=${limit}`,
         {
           method: "GET",
-          headers: { Accept: "application/json" },
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
         }
       );
-      if (!response.ok) throw new Error("Failed to fetch SMS history");
-      const data: SmsHistory[] = await response.json();
-      setSmsHistory(data);
-      setTotalItems(data.length < limit ? skip + data.length : skip + limit + 1);
-      setError(null);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "Unknown error");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentPage, itemsPerPage, showAll]);
 
-  useEffect(() => {
-    fetchSmsHistory();
-  }, [fetchSmsHistory]);
+      if (!response.ok) {
+        if (response.status === 404) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail);
+        }
+        throw new Error("Failed to fetch SMS history");
+      }
+
+      return await response.json();
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: (failureCount, error) => {
+      if (error.message === "User not Found" || error.message === "No message found") {
+        return false;
+      }
+      return failureCount < 2;
+    },
+  });
 
   const handleDelete = async (messageId: number) => {
     if (!window.confirm("Are you sure you want to delete this SMS?")) return;
     try {
+      const token = await getToken();
       const response = await fetch(
-        `https://luco-sms-api.onrender.com/api/v1/sms_history?message_id=${messageId}&user_id=1`,
+        `${import.meta.env.VITE_API_URL}/user/api/v1/sms_history?message_id=${messageId}`,
         {
           method: "DELETE",
-          headers: { Accept: "application/json" },
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
         }
       );
       if (!response.ok) throw new Error("Failed to delete SMS");
-      await fetchSmsHistory(); // Refresh data
+      await queryClient.invalidateQueries({ queryKey: ["sms-history"] });
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Unknown error");
+      console.error(error instanceof Error ? error.message : "Unknown error");
     }
   };
 
@@ -89,7 +106,7 @@ export default function RecentOrders() {
     setCurrentPage(1);
   };
 
-  const filteredSmsHistory = smsHistory.filter((sms) => {
+  const filteredSmsHistory = smsHistory.filter((sms: { message: string; recipient: string; status: string; }) => {
     const matchesSearch =
       sms.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
       sms.recipient.toLowerCase().includes(searchQuery.toLowerCase());
@@ -163,7 +180,7 @@ export default function RecentOrders() {
         {isLoading ? (
           <div className="p-4 text-center text-gray-500">Loading...</div>
         ) : error ? (
-          <div className="p-4 text-center text-red-500">{error}</div>
+          <div className="p-4 text-center text-red-500">{error instanceof Error ? error.message : 'An error occurred'}</div>
         ) : (
           <>
             <Table>
@@ -201,7 +218,7 @@ export default function RecentOrders() {
                   </TableCell>
                 </TableRow>
               </TableHeader>
-              <TableBody className="divide-y divide-gray-100 dark:divide-gray-800">
+              <TableBody>
                 {paginatedSmsHistory.length === 0 ? (
                   <TableRow>
                     <TableCell className="py-4 text-center text-gray-500">
@@ -209,7 +226,7 @@ export default function RecentOrders() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedSmsHistory.map((sms) => (
+                  paginatedSmsHistory.map((sms: SMS) => (
                     <TableRow key={sms.id}>
                       <TableCell className="py-3 w-[40%]">
                         <div className="flex items-center gap-3">
