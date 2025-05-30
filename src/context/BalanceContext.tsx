@@ -29,7 +29,7 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
       const token = await getToken();
       if (!token) throw new Error("Authentication token not found");
 
-      const response = await fetch(`http://127.0.0.1:8000/user/api/v1/wallet-balance`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/user/api/v1/wallet-balance`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',

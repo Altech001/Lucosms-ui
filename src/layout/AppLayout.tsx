@@ -26,7 +26,7 @@ const LayoutContent: React.FC = () => {
         const token = await getToken();
         if (!token) throw new Error("Authentication token not found");
 
-        const response = await fetch(`http://127.0.0.1:8000/user/api/v1/wallet-balance`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/user/api/v1/wallet-balance`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
@@ -71,7 +71,7 @@ const LayoutContent: React.FC = () => {
       >
         <AppHeader />
         <header className="p-4 md:p-6">
-          <div className="flex items-center justify-between gap-4 max-w-[1200px] mx-auto">
+          <div className="flex items-center justify-between gap-4 max-w-[1200px] ">
             {isLoading ? (
               <div className="animate-pulse h-6 w-24 bg-gray-200 dark:bg-zinc-700 rounded" />
             ) : error ? (

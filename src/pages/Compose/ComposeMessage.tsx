@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable react-hooks/rules-of-hooks */
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -64,7 +65,7 @@ const validateAndImportNumbers = async (numbers: string[]) => {
   try {
     const prompt = `
       I have a list of potentially invalid Ugandan phone numbers: ${numbers.join(", ")}.
-      Extract valid numbers and convert to +256XXXXXXXXX format (starts with 7 or 4 after +256).
+      Extract all valid numbers and convert to +256XXXXXXXXX format (starts with 7 after +256).
       Return ONLY a comma-separated list of valid numbers, no explanation.
     `;
     const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
@@ -101,7 +102,7 @@ const exportToExcel = (messages: Message[]) => {
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Messages');
-  XLSX.writeFile(wb, `messages_export_${new Date().toISOString().split('T')[0]}.xlsx`);
+  XLSX.writeFile(wb, `lucosms_msg_report${new Date().toISOString().split('T')[0]}.xlsx`);
 };
 
 const MESSAGE_LIMIT = 160;
@@ -147,7 +148,7 @@ export default function ComposeMessages() {
   const sendSMS = async (recipients: string[], message: string) => {
   try {
     const token = await getToken();
-    const response = await fetch("http://127.0.0.1:8000/api/v1/send_sms", {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/send_sms`, {
       method: "POST",
       headers: { 
         'Authorization': `Bearer ${token}`,
@@ -372,7 +373,7 @@ export default function ComposeMessages() {
   const fetchBalance = async () => {
     const token = await getToken();
     try {
-      const response = await fetch(`http://127.0.0.1:8000/user/api/v1/wallet-balance`,{
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/user/api/v1/wallet-balance`,{
         headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
@@ -409,7 +410,7 @@ export default function ComposeMessages() {
         body: JSON.stringify({
           contents: [{ 
             parts: [{ 
-              text: `Generate a professional SMS message for the following prompt: ${prompt}. Keep it under 160 characters.`
+              text: `Generate a Simple professional SMS message for the following prompt: ${prompt}. Keep it under 160 characters.`
             }] 
           }],
           generationConfig: { temperature: 0.7, maxOutputTokens: 200 },
@@ -451,7 +452,7 @@ export default function ComposeMessages() {
             body: JSON.stringify({
               contents: [{ 
                 parts: [{ 
-                  text: `Based on this partial SMS: "${value}", suggest a professional completion in 2-3 words:`
+                  text: `Based on this partial SMS: "${value}", suggest a professional completion in 1-2 words:`
                 }] 
               }],
               generationConfig: { temperature: 0.3, maxOutputTokens: 50 },
