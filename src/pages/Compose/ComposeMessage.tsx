@@ -13,6 +13,8 @@ import { MoreDotIcon } from "../../icons";
 import { Dropdown } from "../../utils/ui/dropdown/Dropdown";
 import { DropdownItem } from "../../utils/ui/dropdown/DropdownItem";
 import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
+import { useAuth } from "@clerk/clerk-react"
+
 
 // Define types
 interface Contact {
@@ -85,23 +87,7 @@ const validateAndImportNumbers = async (numbers: string[]) => {
 };
 
 
-const sendSMS = async (recipients: string[], message: string) => {
-  try {
-    const response = await fetch("https://luco-sms-api.onrender.com/api/v1/send_sms?user_id=1", {
-      method: "POST",
-      headers: { "accept": "application/json", "Content-Type": "application/json" },
-      body: JSON.stringify({ recipient: recipients, message }),
-    });
 
-    const responseData = await response.json();
-    if (!response.ok || responseData.status !== "success") {
-      throw new Error(responseData.message || "Failed to send SMS");
-    }
-    return responseData;
-  } catch (error) {
-    throw new Error(`Error sending SMS: ${error instanceof Error ? error.message : "Unknown error"}`);
-  }
-};
 
 // Add new utility function for Excel export
 const exportToExcel = (messages: Message[]) => {
@@ -155,6 +141,29 @@ export default function ComposeMessages() {
   const [showMagicModal, setShowMagicModal] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { getToken } = useAuth();
+
+
+  const sendSMS = async (recipients: string[], message: string) => {
+  try {
+    const token = await getToken();
+    const response = await fetch("http://127.0.0.1:8000/api/v1/send_sms", {
+      method: "POST",
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+      "accept": "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ recipient: recipients, message }),
+    });
+
+    const responseData = await response.json();
+    if (!response.ok || responseData.status !== "success") {
+      throw new Error(responseData.message || "Failed to send SMS");
+    }
+    return responseData;
+  } catch (error) {
+    throw new Error(`Error sending SMS: ${error instanceof Error ? error.message : "Unknown error"}`);
+  }
+};
 
   // Filter contacts based on search query
   const filteredContacts = contacts.filter(
@@ -361,8 +370,15 @@ export default function ComposeMessages() {
 
   // Add function to fetch balance
   const fetchBalance = async () => {
+    const token = await getToken();
     try {
-      const response = await fetch('https://luco-sms-api.onrender.com/api/v1/wallet-balance?user_id=1');
+      const response = await fetch(`http://127.0.0.1:8000/user/api/v1/wallet-balance`,{
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
       const data = await response.json();
       setBalance(data.balance);
     } catch (error) {

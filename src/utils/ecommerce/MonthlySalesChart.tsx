@@ -5,6 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { MoreDotIcon } from "../../icons";
+import { useAuth } from "@clerk/clerk-react";
+
 
 interface SmsHistory {
   id: number;
@@ -26,22 +28,33 @@ const ChartSkeleton = () => (
   </div>
 );
 
-const fetchSmsHistory = async (): Promise<SmsHistory[]> => {
-  const response = await fetch(
-    `https://luco-sms-api.onrender.com/api/v1/sms_history?user_id=1&skip=0&limit=1000`,
-    {
-      method: "GET",
-      headers: { Accept: "application/json" },
-    }
-  );
-  if (!response.ok) throw new Error("Failed to fetch SMS history");
-  return response.json();
-};
+
+
 
 export default function MonthlySalesChart() {
+  // const { user } = useUser();
+  const { getToken } = useAuth(); 
+  
+  
+  
   const [period, setPeriod] = useState<"monthly" | "weekly">("monthly");
   const [isOpen, setIsOpen] = useState(false);
-
+  
+  const fetchSmsHistory = async (): Promise<SmsHistory[]> => {
+    const token = await getToken();
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/user/api/v1/sms_history?user_id=1&skip=0&limit=1000`,
+      {
+        method: "GET",
+        headers: { 
+          Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+      }
+    );
+    if (!response.ok) throw new Error("Failed to fetch SMS history");
+    return response.json();
+  };
   const { data: smsHistory, isLoading, error } = useQuery({
     queryKey: ['smsHistory'],
     queryFn: fetchSmsHistory,

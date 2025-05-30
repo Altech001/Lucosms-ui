@@ -1,7 +1,8 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Chart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@clerk/clerk-react";
 
 interface Transaction {
   id: number;
@@ -11,92 +12,104 @@ interface Transaction {
   created_at: string;
 }
 
-interface CachedData {
-  transactions: Transaction[];
-  timestamp: number;
-  year: number;
+interface SmsHistory {
+  id: number;
+  recipient: string;
+  message: string;
+  status: "sent" | "failed" | "pending";
+  cost: number;
+  created_at: string;
 }
 
 export default function StatisticsChart() {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { getToken } = useAuth();
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
-  const [, setTotalYears] = useState(1); // Placeholder for total years
-  const userId = 1; // Replace with actual user ID when available
-  const CACHE_EXPIRATION = 5 * 60 * 1000; // 5 minutes
 
-  const getCachedTransactions = (): CachedData | null => {
-    const cached = localStorage.getItem(`statistics_${userId}`);
-    if (!cached) return null;
+  const {
+    data: transactions = [],
+    isLoading: isTransLoading,
+    error: transError,
+  } = useQuery<Transaction[], Error>({
+    queryKey: ["transactions", currentYear],
+    queryFn: async () => {
+      const token = await getToken();
+      if (!token) throw new Error("Authentication token not found");
 
-    const parsedCache = JSON.parse(cached);
-    if (Date.now() - parsedCache.timestamp > CACHE_EXPIRATION) {
-      localStorage.removeItem(`statistics_${userId}`);
-      return null;
-    }
+      const url = `${import.meta.env.VITE_API_URL}/user/api/v1/transaction_history?skip=0&limit=1000`;
+      // console.log("Fetching transactions from:", url);
 
-    return parsedCache;
-  };
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
 
-  const setCachedTransactions = (transactions: Transaction[]) => {
-    localStorage.setItem(
-      `statistics_${userId}`,
-      JSON.stringify({
-        transactions,
-        timestamp: Date.now(),
-        year: currentYear,
-      })
-    );
-  };
-
-  useEffect(() => {
-    const fetchTransactions = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Check cache first
-        const cached = getCachedTransactions();
-        if (cached) {
-          setTransactions(cached.transactions);
-          const years = new Set(
-            cached.transactions.map((t) => new Date(t.created_at).getFullYear())
-          );
-          setTotalYears(Math.max(years.size, 1));
-          setIsLoading(false);
-          return;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        // console.error("Fetch error:", errorData);
+        if (response.status === 404) {
+          throw new Error(errorData.detail || "Transactions not found");
         }
-
-        const response = await fetch(
-          `https://luco-sms-api.onrender.com/api/v1/transaction_history?user_id=${userId}&skip=0&limit=1000`,
-          {
-            method: "GET",
-            headers: { Accept: "application/json" },
-          }
-        );
-        if (!response.ok) throw new Error("Failed to fetch transactions");
-        const data: Transaction[] = await response.json();
-        
-        // Cache the results
-        setCachedTransactions(data);
-        setTransactions(data);
-        
-        const years = new Set(
-          data.map((t) => new Date(t.created_at).getFullYear())
-        );
-        setTotalYears(Math.max(years.size, 1));
-        setError(null);
-      } catch (error) {
-        setError(error instanceof Error ? error.message : "Unknown error");
-      } finally {
-        setIsLoading(false);
+        throw new Error(`Failed to fetch transactions: ${response.statusText}`);
       }
-    };
 
-    fetchTransactions();
-  }, []);
+      const data = await response.json();
+      // console.log("Fetched transactions:", data);
+      return Array.isArray(data) ? data : data.transactions || [];
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    retry: (failureCount, error) => {
+      if (error.message.includes("not found") || error.message.includes("Authentication")) {
+        return false;
+      }
+      return failureCount < 2;
+    },
+  });
 
-  // Aggregate data by month for the current year
+  const {
+    data: smsHistory = [],
+    isLoading: isSmsLoading,
+    error: smsError,
+  } = useQuery<SmsHistory[], Error>({
+    queryKey: ["sms-history", currentYear],
+    queryFn: async () => {
+      const token = await getToken();
+      if (!token) throw new Error("Authentication token not found");
+
+      const url = `${import.meta.env.VITE_API_URL}/user/api/v1/sms_history?skip=0&limit=1000`;
+      // console.log("Fetching SMS history from:", url);
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        // console.error("SMS fetch error:", errorData);
+        if (response.status === 404) {
+          throw new Error(errorData.detail || "SMS history not found");
+        }
+        throw new Error(`Failed to fetch SMS history: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      // console.log("Fetched SMS history:", data);
+      return Array.isArray(data) ? data : data.messages || [];
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    enabled: Boolean(transactions.length),
+  });
+
   const getChartData = () => {
     const months = [
       "Jan",
@@ -116,25 +129,36 @@ export default function StatisticsChart() {
     const mtnData = new Array(12).fill(0);
 
     transactions.forEach((transaction) => {
+      // console.log("Processing transaction:", transaction); // Debug each transaction
       if (transaction.transaction_type === "sms_deduction") {
         const date = new Date(transaction.created_at);
         if (date.getFullYear() === currentYear) {
           const month = date.getMonth();
           const absAmount = Math.abs(transaction.amount);
-          
-          // Extract network information from transaction data
-          // Assuming the transaction has a network field or pattern
-          // You might need to adjust this based on your actual data structure
-          const isAirtel = transaction.id.toString().endsWith('0'); // Example pattern
-          if (isAirtel) {
-            airtelData[month] += absAmount;
+
+          // Match by created_at timestamp (within 1 second)
+          const sms = smsHistory.find((s) => {
+            const smsDate = new Date(s.created_at);
+            const transDate = new Date(transaction.created_at);
+            return Math.abs(smsDate.getTime() - transDate.getTime()) < 1000; // 1-second window
+          });
+
+          if (sms) {
+            // console.log("Matched SMS for transaction", transaction.id, ":", sms); // Debug match
+            const recipient = sms.recipient;
+            if (/^\+256(70|75)/.test(recipient)) {
+              airtelData[month] += absAmount;
+            } else if (/^\+256(77|78)/.test(recipient)) {
+              mtnData[month] += absAmount;
+            }
           } else {
-            mtnData[month] += absAmount;
+            // console.log("No SMS match for transaction", transaction.id, "at", transaction.created_at); // Debug mismatch
           }
         }
       }
     });
 
+    // console.log("Airtel Data:", airtelData, "MTN Data:", mtnData); // Debug final data
     return {
       categories: months,
       series: [
@@ -144,25 +168,27 @@ export default function StatisticsChart() {
     };
   };
 
-  const { categories, series } = getChartData();
+  const { categories, series } = (transactions.length && smsHistory.length) ? getChartData() : { categories: [], series: [] };
 
   const options: ApexOptions = {
     legend: {
-      show: false,
+      show: true,
       position: "top",
       horizontalAlign: "left",
+      fontFamily: "Outfit",
+      fontSize: "14px",
     },
-    colors: ["red", "yellow"],
+    colors: ["#E3342F", "#F6E05E"], // Red for Airtel, Yellow for MTN
     chart: {
       fontFamily: "Outfit, sans-serif",
       height: 310,
-      type: "line",
+      type: "area",
       toolbar: {
         show: false,
       },
     },
     stroke: {
-      curve: "straight",
+      curve: "smooth", // Smoother curves for better visual
       width: [2, 2],
     },
     fill: {
@@ -173,7 +199,7 @@ export default function StatisticsChart() {
       },
     },
     markers: {
-      size: 0,
+      size: 4,
       strokeColors: "#fff",
       strokeWidth: 2,
       hover: {
@@ -183,7 +209,7 @@ export default function StatisticsChart() {
     grid: {
       xaxis: {
         lines: {
-          show: false,
+          show: true,
         },
       },
       yaxis: {
@@ -193,12 +219,21 @@ export default function StatisticsChart() {
       },
     },
     dataLabels: {
-      enabled: false,
+      enabled: true,
+      formatter: (val: number) => (val > 0 ? `${val.toLocaleString()} UGX` : ""),
+      style: {
+        fontSize: "12px",
+        fontFamily: "Outfit",
+        colors: ["#333"],
+      },
     },
     tooltip: {
       enabled: true,
       x: {
-        format: "dd MMM yyyy",
+        format: "MMM yyyy",
+      },
+      y: {
+        formatter: (val: number) => `${val.toLocaleString()} UGX`,
       },
     },
     xaxis: {
@@ -213,6 +248,12 @@ export default function StatisticsChart() {
       tooltip: {
         enabled: false,
       },
+      labels: {
+        style: {
+          colors: "#6B7280",
+          fontSize: "12px",
+        },
+      },
     },
     yaxis: {
       labels: {
@@ -220,18 +261,25 @@ export default function StatisticsChart() {
           fontSize: "12px",
           colors: ["#6B7280"],
         },
+        formatter: (val: number) => `${val.toLocaleString()}`,
       },
       title: {
-        text: "",
+        text: "Amount (UGX)",
         style: {
-          fontSize: "0px",
+          fontSize: "12px",
+          fontFamily: "Outfit",
         },
       },
+      min: 0, // Start at 0
+      forceNiceScale: true, // Better scaling
     },
   };
 
   const handlePreviousYear = () => {
-    if (currentYear > Math.min(...transactions.map((t) => new Date(t.created_at).getFullYear()))) {
+    const years = transactions.length
+      ? [...new Set(transactions.map((t) => new Date(t.created_at).getFullYear()))]
+      : [currentYear];
+    if (currentYear > Math.min(...years)) {
       setCurrentYear(currentYear - 1);
     }
   };
@@ -260,10 +308,24 @@ export default function StatisticsChart() {
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white px-5 pb-5 pt-4 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-2">
-      {isLoading ? (
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
+          Transaction Statistics
+        </h3>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Transaction amounts for Airtel and MTN in {currentYear}
+        </p>
+      </div>
+      {isTransLoading || isSmsLoading ? (
         <ChartSkeleton />
-      ) : error ? (
-        <div className="p-4 text-center text-red-500">{error}</div>
+      ) : transError || smsError ? (
+        <div className="p-4 text-center text-red-500 dark:text-red-400">
+          {transError?.message || smsError?.message}
+        </div>
+      ) : transactions.length === 0 || smsHistory.length === 0 ? (
+        <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+          No transactions or SMS history found for {currentYear}
+        </div>
       ) : (
         <>
           <div className="max-w-full overflow-x-auto custom-scrollbar">
@@ -271,7 +333,6 @@ export default function StatisticsChart() {
               <Chart options={options} series={series} type="area" height={310} />
             </div>
           </div>
-          {/* Pagination Controls */}
           <div className="flex items-center justify-between px-5 py-4 border-t border-gray-200 dark:border-white/[0.05]">
             <div className="text-xs text-gray-500 dark:text-gray-400">
               Showing transactions for {currentYear}
@@ -279,9 +340,9 @@ export default function StatisticsChart() {
             <div className="flex items-center space-x-2">
               <button
                 onClick={handlePreviousYear}
-                disabled={currentYear <= Math.min(...transactions.map((t) => new Date(t.created_at).getFullYear()))}
+                disabled={transactions.length === 0 || currentYear <= Math.min(...transactions.map((t) => new Date(t.created_at).getFullYear()))}
                 className={`px-3 py-1 text-sm font-medium rounded-md ${
-                  currentYear <= Math.min(...transactions.map((t) => new Date(t.created_at).getFullYear()))
+                  transactions.length === 0 || currentYear <= Math.min(...transactions.map((t) => new Date(t.created_at).getFullYear()))
                     ? "text-gray-300 dark:text-gray-600 cursor-not-allowed"
                     : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
                 }`}

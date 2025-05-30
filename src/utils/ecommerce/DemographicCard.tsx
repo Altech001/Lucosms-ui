@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
@@ -19,6 +20,7 @@ interface SmsHistory {
 }
 
 interface DeliveryReport {
+  sms_id: number; // Add sms_id to correlate with SmsHistory
   status: "sent" | "failed" | "pending";
 }
 
@@ -33,13 +35,13 @@ export default function DemographicCard() {
   const [isOpen, setIsOpen] = useState(false);
   const [country, setCountry] = useState<CountryType>("Uganda");
   const { getToken } = useAuth();
-  
+
   const {
     data: smsHistory = [] as SmsHistory[],
     isLoading,
-    error: queryError
+    error: queryError,
   } = useQuery({
-    queryKey: ["sms-history", 0, 1000, true], // Using fixed values since we want all records
+    queryKey: ["sms-history", 0, 1000, true],
     queryFn: async () => {
       const token = await getToken();
       const response = await fetch(
@@ -81,16 +83,28 @@ export default function DemographicCard() {
     queryFn: async () => {
       if (!smsHistory.length) return [];
       const token = await getToken();
-      const promises = smsHistory.map((sms: { id: unknown; }) => 
-        fetch(`${import.meta.env.VITE_API_URL}/user/api/v1/delivery_report/${sms.id}`, {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/user/api/v1/delivery_report`,
+        {
+          method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
           credentials: "include",
-        }).then(res => res.json())
+        }
       );
-      return Promise.all<DeliveryReport>(promises);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail);
+        }
+        throw new Error("Failed to fetch delivery reports");
+      }
+
+      const data = await response.json();
+      return data.delivery_reports; // Extract delivery_reports from response
     },
     enabled: Boolean(smsHistory.length),
     staleTime: 5 * 60 * 1000,
@@ -99,7 +113,7 @@ export default function DemographicCard() {
   const countryPrefixes: Record<CountryType, string> = {
     Uganda: "+256",
     Kenya: "+254",
-    Rwanda: "+250"
+    Rwanda: "+250",
   };
 
   const getNetworkData = (): NetworkData[] => {
@@ -107,13 +121,12 @@ export default function DemographicCard() {
     const filteredSms = smsHistory.filter((sms: { recipient: string; }) =>
       sms.recipient.startsWith(countryPrefixes[country])
     );
-    const filteredDelivery = deliveryReports.slice(0, filteredSms.length);
 
     // Define networks based on country
     const networks = {
       Uganda: ["Airtel UG", "MTN UG"],
       Kenya: ["Safaricom KE", "Airtel KE"],
-      Rwanda: ["MTN RW", "Airtel RW"]
+      Rwanda: ["MTN RW", "Airtel RW"],
     }[country];
 
     // Infer network from recipient prefix if no network field
@@ -137,12 +150,14 @@ export default function DemographicCard() {
       networkData[network] = { customers: new Set(), sent: 0, total: 0 };
     });
 
-    filteredSms.forEach((sms: { network: string; recipient: string; }, i: number) => {
+    filteredSms.forEach((sms: { network: string; recipient: string; id: any; }) => {
       const network = sms.network || getNetwork(sms.recipient);
       if (networkData[network]) {
         networkData[network].customers.add(sms.recipient);
         networkData[network].total++;
-        if (filteredDelivery[i]?.status === "sent") {
+        // Find matching delivery report by sms_id
+        const deliveryReport = deliveryReports.find((report: { sms_id: any; }) => report.sms_id === sms.id);
+        if (deliveryReport?.status === "sent") {
           networkData[network].sent++;
         }
       }
@@ -150,10 +165,8 @@ export default function DemographicCard() {
 
     return networks.map((network) => {
       const stats = networkData[network];
-      const deliveryRate = stats.total > 0 
-        ? Math.round((stats.sent / stats.total) * 100)
-        : 0;
-      
+      const deliveryRate = stats.total > 0 ? Math.round((stats.sent / stats.total) * 100) : 0;
+
       return {
         name: network,
         logo: network.includes("Airtel")

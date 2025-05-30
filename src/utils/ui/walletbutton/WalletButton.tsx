@@ -46,7 +46,7 @@ export default function AddSmsCreditsModal({ isOpen, onClose }: AddSmsCreditsMod
     
     try {
       const response = await fetch(
-        "https://luco-sms-api.onrender.com/api/v1/topup?user_id=1",
+        "https://luco-sms-api.onrender.com/api/v1/topup",
         {
           method: "POST",
           headers: {

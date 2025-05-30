@@ -8,6 +8,7 @@ import TextArea from "../utils/form/input/TextArea";
 import Input from "../utils/form/input/InputField";
 import { useNavigate } from "react-router";
 import Cookies from "js-cookie";
+import { useUser, useAuth } from "@clerk/clerk-react";
 
 interface Template {
   id: number;
@@ -34,6 +35,9 @@ interface TemplateSuggestion {
 }
 
 export default function Templates() {
+  const { user } = useUser();
+  const { getToken } = useAuth(); // Assuming token is fetched here
+
   const [templates, setTemplates] = useState<Template[]>([]);
   const [output, setOutput] = useState<string>("");
   const [formName, setFormName] = useState<string>("");
@@ -78,47 +82,49 @@ export default function Templates() {
     fetchTemplates();
   }, []);
 
-  const fetchTemplates = async () => {
-    // Try to get cached templates first
-    const cachedTemplates = getCachedTemplates();
-    if (cachedTemplates) {
-      setTemplates(cachedTemplates);
-      return;
-    }
+const fetchTemplates = async () => {
+  // Try to get cached templates first
+  const cachedTemplates = getCachedTemplates();
+  if (cachedTemplates) {
+    setTemplates(cachedTemplates);
+    return;
+  }
 
-    try {
-      const response = await fetch(
-        `https://luco-sms-api.onrender.com/api/v1/smstemplate?user_id=${userId}`,
-        {
-          method: "GET",
-          headers: {
-            accept: "application/json",
-          },
-        }
-      );
-      if (!response.ok) throw new Error(`Failed to fetch templates: ${response.status}`);
-      const data: { id: number; name: string; content: string }[] = await response.json();
+  try {
+    const token = await getToken(); // Await the token promise
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/user/api/v1/smstemplate`, // Updated to match Insomnia endpoint
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`, // Add the Authorization header
+          accept: "application/json",
+        },
+      }
+    );
+    if (!response.ok) throw new Error(`Failed to fetch templates: ${response.status}`);
+    const data: { id: number; name: string; content: string }[] = await response.json();
 
-      // Load favorite statuses from localStorage or cookies
-      const favoriteStatuses = JSON.parse(localStorage.getItem(`favorites_${userId}`) || "{}");
-      const templatesWithFavorites = data.map((template) => ({
-        ...template,
-        isFavorite: favoriteStatuses[template.id] ?? (Cookies.get(`favorite_${userId}_${template.id}`) === "true" || false),
-      }));
+    // Load favorite statuses from localStorage or cookies
+    const favoriteStatuses = JSON.parse(localStorage.getItem(`favorites_${userId}`) || "{}");
+    const templatesWithFavorites = data.map((template) => ({
+      ...template,
+      isFavorite: favoriteStatuses[template.id] ?? (Cookies.get(`favorite_${userId}_${template.id}`) === "true" || false),
+    }));
 
-      setTemplates(templatesWithFavorites);
-      // Cache the templates
-      setCachedTemplates(templatesWithFavorites);
-    } catch (error) {
-      console.error("Fetch templates error:", error);
-      setAlert({
-        variant: "error",
-        title: "Error",
-        message: "Failed to fetch templates. Please try again.",
-      });
-      setTimeout(() => setAlert(null), 3000);
-    }
-  };
+    setTemplates(templatesWithFavorites);
+    // Cache the templates
+    setCachedTemplates(templatesWithFavorites);
+  } catch (error) {
+    console.error("Fetch templates error:", error);
+    setAlert({
+      variant: "error",
+      title: "Error",
+      message: "Failed to fetch templates. Please try again.",
+    });
+    setTimeout(() => setAlert(null), 3000);
+  }
+};
 
   const saveFavoriteStatus = (templateId: number, isFavorite: boolean) => {
     // Update localStorage
@@ -166,14 +172,16 @@ export default function Templates() {
 
     setIsCreating(true); // Start loading spinner
     try {
+      const token = await getToken(); // Await the token promise
       const response = await fetch(
-        `https://luco-sms-api.onrender.com/api/v1/smstemplate?user_id=${userId}`,
+        `${import.meta.env.VITE_API_URL}/user/api/v1/smstemplate`,
         {
           method: "POST",
           headers: {
-            accept: "application/json",
+            Authorization: `Bearer ${token}`, // Now contains the actual token string
             "Content-Type": "application/json",
           },
+          credentials: "include",
           body: JSON.stringify({
             id: 0, // Added to match SmsTemplates payload
             name: formName,
@@ -181,7 +189,6 @@ export default function Templates() {
           }),
         }
       );
-
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(`Failed to create template: ${response.status} - ${errorData.message || "Unknown error"}`);
@@ -214,97 +221,113 @@ export default function Templates() {
     }
   };
 
-  const handleUpdateTemplate = async () => {
-    if (editIndex === null || !formName || !formContent) {
-      setAlert({
-        variant: "error",
-        title: "Validation Error",
-        message: "Please fill in both name and content.",
-      });
-      return;
+const handleUpdateTemplate = async () => {
+  if (editIndex === null || !formName || !formContent) {
+    setAlert({
+      variant: "error",
+      title: "Validation Error",
+      message: "Please fill in both name and content.",
+    });
+    return;
+  }
+
+  const templateId = templates[editIndex].id;
+  try {
+    const token = await getToken();
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/user/api/v1/sms_temp_update?user_id=${userId}&template_id=${templateId}`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          accept: "application/json",
+        },
+        body: JSON.stringify({
+          new_content: formContent, // Only send new_content to match the server
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`Failed to update template: ${response.status} - ${errorData.detail || "Unknown error"}`);
     }
 
-    // const templateId = templates[editIndex].id;
-    try {
-      const response = await fetch(
-        `https://luco-sms-api.onrender.com/api/v1/sms_temp_update?user_id=${userId}&new_content=${encodeURIComponent(formContent)}`,
-        {
-          method: "PUT",
-          headers: {
-            accept: "application/json",
-          },
-        }
-      );
-      if (!response.ok) throw new Error(`Failed to update template: ${response.status}`);
-      const updatedTemplates = [...templates];
-      updatedTemplates[editIndex] = {
-        ...updatedTemplates[editIndex],
-        name: formName, // Note: API doesn't update name; adjust if API changes
-        content: formContent,
-      };
-      setTemplates(updatedTemplates);
-      setCachedTemplates(updatedTemplates); // Update cache
-      setAlert({
-        variant: "success",
-        title: "Success",
-        message: "Template updated successfully.",
-      });
+    const updatedTemplate = await response.json(); // Expecting { message, old_content, new_content }
+    const updatedTemplates = [...templates];
+    updatedTemplates[editIndex] = {
+      ...updatedTemplates[editIndex],
+      content: updatedTemplate.new_content, // Update only the content from the response
+    };
+    setTemplates(updatedTemplates);
+    setCachedTemplates(updatedTemplates);
+    setAlert({
+      variant: "success",
+      title: "Success",
+      message: "Template updated successfully.",
+    });
+    setFormName("");
+    setFormContent("");
+    setEditIndex(null);
+    setIsModalOpen(false);
+    setTimeout(() => setAlert(null), 3000);
+  } catch (error) {
+    console.error("Update template error:", error);
+    setAlert({
+      variant: "error",
+      title: "Error",
+      message: `Failed to update template: ${error instanceof Error ? error.message : "Please try again."}`,
+    });
+    setTimeout(() => setAlert(null), 3000);
+  }
+};
+
+const handleDeleteTemplate = async (index: number) => {
+  const templateId = templates[index].id;
+  try {
+    const token = await getToken(); // Await the token promise
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/user/api/v1/sms_template?template_id=${templateId}`, // Fixed typo
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`, // Add the Authorization header
+          accept: "application/json",
+        },
+      }
+    );
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`Failed to delete template: ${response.status} - ${errorData.detail || "Unknown error"}`);
+    }
+
+    const updatedTemplates = templates.filter((_, i) => i !== index);
+    setTemplates(updatedTemplates);
+    setCachedTemplates(updatedTemplates);
+    setAlert({
+      variant: "error", // Changed to "success" for consistency with other actions
+      title: `Template Deleted ${templateId.toString()}`,
+      message: "The template has been successfully deleted.",
+    });
+    if (editIndex === index) {
       setFormName("");
       setFormContent("");
       setEditIndex(null);
-      setIsModalOpen(false);
-      setTimeout(() => setAlert(null), 3000);
-    } catch (error) {
-      console.error("Update template error:", error);
-      setAlert({
-        variant: "error",
-        title: "Error",
-        message: "Failed to update template. Please try again.",
-      });
-      setTimeout(() => setAlert(null), 3000);
     }
-  };
-
-  const handleDeleteTemplate = async (index: number) => {
-    const templateId = templates[index].id;
-    try  {
-      const response = await fetch(
-        `https://luco-sms-api.onrender.com/api/v1/sms_template?template_id=${templateId}&user_id=${userId}`,
-        {
-          method: "DELETE",
-          headers: {
-            accept: "application/json",
-          },
-        }
-      );
-      if (!response.ok) throw new Error(`Failed to delete template: ${response.status}`);
-      const updatedTemplates = templates.filter((_, i) => i !== index);
-      setTemplates(updatedTemplates);
-      setCachedTemplates(updatedTemplates); // Update cache
-      setAlert({
-        variant: "error",
-        title: "Template Deleted",
-        message: "The template has been successfully deleted.",
-      });
-      if (editIndex === index) {
-        setFormName("");
-        setFormContent("");
-        setEditIndex(null);
-      }
-      // Remove favorite status from storage
-      localStorage.removeItem(`favorites_${userId}`);
-      Cookies.remove(`favorite_${userId}_${templateId}`);
-      setTimeout(() => setAlert(null), 3000);
-    } catch (error) {
-      console.error("Delete template error:", error);
-      setAlert({
-        variant: "error",
-        title: "Error",
-        message: "Failed to delete template. Please try again.",
-      });
-      setTimeout(() => setAlert(null), 3000);
-    }
-  };
+    localStorage.removeItem(`favorites_${user?.id}`);
+    Cookies.remove(`favorite_${user?.id}_${templateId}`);
+    setTimeout(() => setAlert(null), 3000);
+  } catch (error) {
+    console.error("Delete template error:", error);
+    setAlert({
+      variant: "error",
+      title: "Error",
+      message: `Failed to delete template: ${error instanceof Error ? error.message : "Please try again."}`,
+    });
+    setTimeout(() => setAlert(null), 3000);
+  }
+};
 
   const handleEditClick = (index: number) => {
     setFormName(templates[index].name);
@@ -332,7 +355,7 @@ export default function Templates() {
 
   const generateSuggestionsWithAI = async () => {
     try {
-      const prompt = `Generate 4 SMS template suggestions in JSON format. Each template should have: name (string), content (string, include [name] placeholder), and category (string). Categories can be: Marketing, Greeting, Reminder, Business, Event, or Celebration. Format as array of objects.`;
+      const prompt = `Generate 2 SMS template suggestions in JSON format. Each template should have: name (string), content (string, include [name] placeholder), and category (string). Categories can be: Marketing, Greeting, Reminder, Business. Format as array of objects.`;
 
       const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
         method: 'POST',
@@ -368,7 +391,21 @@ export default function Templates() {
           content: "Hi [name], welcome to our service!",
           category: "Greeting"
         },
-        // ...other default suggestions...
+        {
+          name: "Special Offer",
+          content: "Hey [name], get 20% off today!",
+          category: "Marketing"
+        },
+        {
+          name: "Appointment Reminder",
+          content: "Hi [name], your appointment is tomorrow.",
+          category: "Reminder"
+        },
+        {
+          name: "Business Inquiry",
+          content: "Hello [name], please contact us for details.",
+          category: "Business"
+        }
       ]);
     } finally {
       setRefreshingSuggestions(false);
@@ -396,7 +433,6 @@ export default function Templates() {
         <div className="p-5 lg:p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Message Templates</h2>
-            {/* <span>View, Use ,Edit and Create Templates for Future Use</span> */}
             <Button variant="primary" onClick={openCreateModal}>
               Create Template
             </Button>
@@ -604,7 +640,6 @@ export default function Templates() {
                 <Input
                   type="text"
                   value={formName}
-                  // value={}
                   onChange={(e) => setFormName(e.target.value)}
                   placeholder="Enter template name"
                 />

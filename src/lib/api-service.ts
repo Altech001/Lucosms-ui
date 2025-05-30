@@ -1,3 +1,5 @@
+// import { useAuth } from "@clerk/clerk-react";
+
 export interface ApiKeyResponse {
   api_key: string;
   message: string;
@@ -5,7 +7,8 @@ export interface ApiKeyResponse {
 
 export interface ApiKey {
   id: number;
-  key: string;
+  key: string; // Masked key (last 8 chars)
+  full_key: string; // Full key for copying
   is_active: boolean;
 }
 
@@ -17,37 +20,85 @@ export interface ApiLog {
   key: string;
 }
 
-const API_BASE_URL = 'https://luco-sms-api.onrender.com';
+// const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL}`;
 
 export const apiService = {
-  async generateApiKey(userId: number): Promise<ApiKeyResponse> {
-    const response = await fetch(`${API_BASE_URL}/api_key/generate?user_id=${userId}`, {
+  async generateApiKey(getToken: () => Promise<string | null>): Promise<ApiKeyResponse> {
+    const token = await getToken();
+    if (!token) throw new Error("Authentication token not found");
+
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api_key/generate`, {
       method: 'POST',
-      headers: { 'accept': 'application/json' },
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
     });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Failed to generate API key: ${response.statusText}`);
+    }
+
     return response.json();
   },
 
-  async listApiKeys(userId: number): Promise<ApiKey[]> {
-    const response = await fetch(`${API_BASE_URL}/api_key/list?user_id=${userId}`, {
-      headers: { 'accept': 'application/json' },
+  async listApiKeys(getToken: () => Promise<string | null>): Promise<ApiKey[]> {
+    const token = await getToken();
+    if (!token) throw new Error("Authentication token not found");
+
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api_key/list`, {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
     });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Failed to fetch API keys: ${response.statusText}`);
+    }
+
     return response.json();
   },
 
-  async deactivateApiKey(userId: number, keyId: number) {
-    const response = await fetch(`${API_BASE_URL}/api_key/deactivate/${keyId}?user_id=${userId}`, {
+  async deactivateApiKey(keyId: number, getToken: () => Promise<string | null>) {
+    const token = await getToken();
+    if (!token) throw new Error("Authentication token not found");
+
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api_key/deactivate/${keyId}`, {
       method: 'PUT',
-      headers: { 'accept': 'application/json' },
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
     });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Failed to deactivate API key: ${response.statusText}`);
+    }
+
     return response.json();
   },
 
-  async deleteApiKey(userId: number, keyId: number) {
-    const response = await fetch(`${API_BASE_URL}/api_key/delete/${keyId}?user_id=${userId}`, {
+  async deleteApiKey(keyId: number, getToken: () => Promise<string | null>) {
+    const token = await getToken();
+    if (!token) throw new Error("Authentication token not found");
+
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api_key/delete/${keyId}`, {
       method: 'DELETE',
-      headers: { 'accept': 'application/json' },
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
     });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Failed to delete API key: ${response.statusText}`);
+    }
+
     return response.json();
   },
 };

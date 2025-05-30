@@ -9,12 +9,15 @@ import AddSmsCreditsModal from "../utils/ui/walletbutton/WalletButton";
 // import AddSmsCreditsModal from "./AddSmsCreditsModal";
 import { UserButton } from "@clerk/clerk-react";
 
+
+
 const AppHeader: React.FC = () => {
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
   const { balance, isLoading } = useBalance();
+  
 
   const handleToggle = () => {
     if (window.innerWidth >= 1024) {
@@ -150,7 +153,7 @@ const AppHeader: React.FC = () => {
             isApplicationMenuOpen ? "flex" : "hidden"
           } items-center justify-between w-full gap-4 px-5 py-4 lg:flex shadow-theme-md lg:justify-end lg:px-0 lg:shadow-none`}
         >
-            <div className="border border-gray-200 rounded-2xl dark:border-zinc-800 p-2">
+            <div className="flex items-center gap-2 2xsm:gap-3 border-8 border-gray-200 rounded-full  dark:border-zinc-800 p-2 z-10">
               <UserButton  afterSignOutUrl="/signin"  />
             </div>
           <div className="flex items-center gap-2 2xsm:gap-3">
