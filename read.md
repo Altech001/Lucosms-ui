@@ -25,15 +25,22 @@
 
         if (Clerk.user) {
           const user = Clerk.user;
+          console.log('User ID:', user.id);
+          console.log('First Name:', user.firstName);
+          console.log('Last Name:', user.lastName);
+          console.log('Email Addresses:', user.emailAddresses[0].emailAddress);
 
           const session = Clerk.session;
+          console.log('Session ID:', session.id);
+          console.log('User ID:', session.userId);
+          console.log('Session Expires At:', session.expiresAt);
 
           // Get the session token for API authentication
           const sessionToken = await Clerk.session.getToken();
-          
+          <!-- console.log('Session Token:', sessionToken); -->
 
           try {
-            const response = await fetch(`https://lucosms-api.onrender.com/auth/protected/`, {
+            const response = await fetch(`http://localhost:8000/auth/protected/`, {
               method: 'GET',
               headers: {
                 'Authorization': `Bearer ${sessionToken}`,
@@ -49,7 +56,7 @@
             }
 
             const data = await response.json();
-            
+            console.log('API Response:', data);
           } catch (error) {
             console.error('Error calling API:', error);
           }
