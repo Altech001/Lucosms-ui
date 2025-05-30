@@ -127,7 +127,7 @@ export default function Home() {
           Welcome back, {user?.firstName || "User"}! 👋
         </h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Here's what's happening with your SMS campaigns today.
+          Yello, Manage the Day to Day SMS activities of your business with ease.
         </p>
       </div>
       <div className="grid grid-cols-12 gap-4 md:gap-6">

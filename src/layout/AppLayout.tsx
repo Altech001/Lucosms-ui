@@ -14,8 +14,8 @@ const LayoutContent: React.FC = () => {
   // const { state } = useMessage();
   const { getToken } = useAuth();
   const [actualBalance, setActualBalance] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setIsLoading] = useState(true);
+  const [, setError] = useState<string | null>(null);
   const [showAlert] = useState(true);
 
   useEffect(() => {
@@ -70,22 +70,6 @@ const LayoutContent: React.FC = () => {
         } ${isMobileOpen ? "ml-0" : ""}`}
       >
         <AppHeader />
-        <header className="p-4 md:p-6">
-          <div className="flex items-center justify-between gap-4 max-w-[1200px] ">
-            {isLoading ? (
-              <div className="animate-pulse h-6 w-24 bg-gray-200 dark:bg-zinc-700 rounded" />
-            ) : error ? (
-              <span className="text-sm text-red-600 dark:text-red-400 font-[Outfit]">
-                {error}
-              </span>
-            ) : (
-              <span className="text-sm font-medium text-zinc-900 dark:text-white font-[Outfit]">
-                Balance: UGx {actualBalance?.toFixed(2) || "0.00"}
-              </span>
-            )}
-            {/* Add other header elements here */}
-          </div>
-        </header>
         {showAlert && actualBalance !== null && actualBalance < 1000 && (
           <AlertBanner
             type="warning"
@@ -93,7 +77,7 @@ const LayoutContent: React.FC = () => {
             // onClose={() => setShowAlert(false)}
           />
         )}
-        <div className="p-4 mx-auto max-w-[1200px] md:p-6">
+        <div className="p-4 max-w-[1200px] md:p-6">
           <Outlet />
         </div>
       </div>
@@ -112,3 +96,18 @@ const AppLayout: React.FC = () => {
 };
 
 export default AppLayout;
+
+{/* <div className="flex items-center justify-between gap-4 max-w-[1200px] ">
+            {isLoading ? (
+              <div className="animate-pulse h-6 w-24 bg-gray-200 dark:bg-zinc-700 rounded" />
+            ) : error ? (
+              <span className="text-sm text-red-600 dark:text-red-400 font-[Outfit]">
+                {error}
+              </span>
+            ) : (
+              <span className="text-sm font-medium text-zinc-900 dark:text-white font-[Outfit]">
+                Balance: UGx {actualBalance?.toFixed(2) || "0.00"}
+              </span>
+            )}
+            {/* Add other header elements here */}
+          // </div>

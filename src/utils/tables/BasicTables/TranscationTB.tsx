@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+// /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useMemo } from "react";
 import Chart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
@@ -21,10 +21,10 @@ interface Transaction {
   created_at: string;
 }
 
-interface CachedData {
-  transactions: Transaction[];
-  timestamp: number;
-}
+// interface CachedData {
+//   transactions: Transaction[];
+//   timestamp: number;
+// }
 
 export default function TransactionDashboard() {
   const { getToken } = useAuth();
@@ -32,21 +32,21 @@ export default function TransactionDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
-  const CACHE_EXPIRATION = 5 * 60 * 1000; // 5 minutes in milliseconds
+  // const CACHE_EXPIRATION = 5 * 60 * 1000; // 5 minutes in milliseconds
   const userId = 1; // Replace with actual user ID when available
 
-  const getCachedTransactions = (): CachedData | null => {
-    const cached = localStorage.getItem(`transactions_${userId}`);
-    if (!cached) return null;
+  // const getCachedTransactions = (): CachedData | null => {
+  //   const cached = localStorage.getItem(`transactions_${userId}`);
+  //   if (!cached) return null;
 
-    const parsedCache = JSON.parse(cached);
-    if (Date.now() - parsedCache.timestamp > CACHE_EXPIRATION) {
-      localStorage.removeItem(`transactions_${userId}`);
-      return null;
-    }
+  //   const parsedCache = JSON.parse(cached);
+  //   if (Date.now() - parsedCache.timestamp > CACHE_EXPIRATION) {
+  //     localStorage.removeItem(`transactions_${userId}`);
+  //     return null;
+  //   }
 
-    return parsedCache;
-  };
+  //   return parsedCache;
+  // };
 
   const setCachedTransactions = (data: Transaction[]) => {
     localStorage.setItem(
