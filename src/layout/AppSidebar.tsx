@@ -9,7 +9,7 @@ import {
 import {
   BookOpen,
   LucideKeySquare,
-  MessageSquare,
+  // MessageSquare,
   MessageSquareText,
   ReceiptText,
   SquareDashedKanban,
@@ -250,14 +250,24 @@ const AppSidebar: React.FC = () => {
         <Link to="/">
           {isExpanded || isHovered || isMobileOpen ? (
             <div className="flex items-center gap-2">
-              <MessageSquare className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-              <span className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+              {/* <MessageSquare className="w-6 h-6 text-blue-600 dark:text-blue-400" /> */}
+              <img
+                src={"/public/favicon.png"}
+                alt="LucoSMS Logo"
+                className="w-8 h-8 text-black rounded-full"
+              />
+              <span className="text-lg font-semibold text-gray-900 dark:text-gray-200">
                 LucoSMS
               </span>
             </div>
           ) : (
             <div className="flex items-center gap-1">
-              <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              {/* <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" /> */}
+              <img
+                src={"/public/favicon.png"}
+                alt="LucoSMS Logo"
+                className="w-8 h-8 rounded-full text-black dark:bg-white"
+              />
             </div>
           )}
         </Link>
