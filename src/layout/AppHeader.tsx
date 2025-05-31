@@ -4,7 +4,7 @@ import { useSidebar } from "../context/SidebarContext";
 import { useBalance } from "../context/BalanceContext";
 import { ThemeToggleButton } from "../utils/common/ThemeToggleButton";
 import Button from "../utils/ui/button/Button";
-import { MessageSquare, WalletMinimal } from "lucide-react";
+import { WalletMinimal } from "lucide-react";
 import AddSmsCreditsModal from "../utils/ui/walletbutton/WalletButton";
 // import AddSmsCreditsModal from "./AddSmsCreditsModal";
 import { UserButton } from "@clerk/clerk-react";
@@ -96,7 +96,12 @@ const AppHeader: React.FC = () => {
           <Link to="/" className="lg:hidden">
             <div className="dark:hidden">
               <div className="flex items-center gap-2">
-                <MessageSquare className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                {/* <MessageSquare className="w-6 h-6 text-blue-600 dark:text-blue-400" /> */}
+                <img
+                src={"/favicon.png"}
+                alt="LucoSMS Logo"
+                className="w-8 h-8 rounded-full text-black dark:bg-white"
+              />
                 {/* <Globe className="w-6 h-6 text-green-600 dark:text-green-400" /> */}
                 <span className="text-lg font-semibold text-gray-800 dark:text-gray-200">
                   LucoSMS
@@ -105,7 +110,12 @@ const AppHeader: React.FC = () => {
             </div>
             <div className="hidden dark:block">
               <div className="flex items-center gap-2">
-                <MessageSquare className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                {/* <MessageSquare className="w-6 h-6 text-blue-600 dark:text-blue-400" /> */}
+                <img
+                src={"/favicon.png"}
+                alt="LucoSMS Logo"
+                className="w-8 h-8 rounded-full text-black dark:bg-white"
+              />
                 <span className="text-lg font-semibold text-gray-800 dark:text-gray-200">
                   LucoSMS
                 </span>
