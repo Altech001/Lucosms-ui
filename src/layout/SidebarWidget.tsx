@@ -14,7 +14,7 @@ export default function SidebarWidget() {
       <a
         href="https://lucosms-terms.vercel.app/"
         target="_blank"
-        rel="nofollow"
+        // rel="nofollow"
         className="flex text-xs items-center justify-center p-3 font-medium text-white rounded-lg bg-zinc-950 text-theme-sm hover:bg-zinc-600"
       >
         Terms and Conditions
