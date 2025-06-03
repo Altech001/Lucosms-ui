@@ -12,12 +12,12 @@ export default function SidebarWidget() {
         sending bulk SMS to your customers.
       </p>
       <a
-        href="https://lucosms.vercel.app/"
+        href="https://lucosms-terms.vercel.app/"
         target="_blank"
         rel="nofollow"
-        className="flex items-center justify-center p-3 font-medium text-white rounded-lg bg-zinc-950 text-theme-sm hover:bg-zinc-600"
+        className="flex text-xs items-center justify-center p-3 font-medium text-white rounded-lg bg-zinc-950 text-theme-sm hover:bg-zinc-600"
       >
-        Upgrade to Pro
+        Terms and Conditions
       </a>
     </div>
   );
