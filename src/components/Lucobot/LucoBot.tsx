@@ -152,7 +152,7 @@ Time: ${new Date().toLocaleString()}
         sender: 'bot',
         timestamp: Date.now()
       }]);
-      scrollToBottom(false);
+      scrollToBottom();
     } else {
       alert('Please enter your phone number.');
     }
