@@ -103,30 +103,41 @@ Time: ${new Date().toLocaleString()}
     setIsVisible(false);
   };
 
-  const scrollToBottom = useCallback((smooth = true) => {
-    setTimeout(() => {
-      if (chatContainerRef.current) {
-        const scrollHeight = chatContainerRef.current.scrollHeight;
-        const height = chatContainerRef.current.clientHeight;
-        const maxScrollTop = scrollHeight - height;
+  const scrollToBottom = useCallback(() => {
+    if (chatContainerRef.current) {
+      try {
         chatContainerRef.current.scrollTo({
-          top: maxScrollTop,
-          behavior: smooth ? 'smooth' : 'auto'
+          top: chatContainerRef.current.scrollHeight,
+          behavior: 'auto'
         });
+      } catch {
+        // Fallback for older browsers
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
       }
-    }, 100);
+    }
   }, []);
 
-  // Scroll when messages change
+  // Force scroll after messages update
   useEffect(() => {
-    if (messages.length > 0) {
-      scrollToBottom(true);
-    }
+    // Immediate scroll
+    scrollToBottom();
+    // Delayed scroll to handle dynamic content
+    const timer = setTimeout(scrollToBottom, 100);
+    return () => clearTimeout(timer);
   }, [messages, scrollToBottom]);
+
+  // Additional scroll trigger for when bot is typing
+  useEffect(() => {
+    if (isTyping) {
+      scrollToBottom();
+      const timer = setTimeout(scrollToBottom, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isTyping, scrollToBottom]);
 
   // Scroll on initial load
   useEffect(() => {
-    scrollToBottom(false);
+    scrollToBottom();
   }, [scrollToBottom]);
 
   const handlePhoneNumberSubmit = useCallback(() => {
@@ -241,23 +252,19 @@ Time: ${new Date().toLocaleString()}
     setMessages(prev => [...prev, userMessage]);
     setIsTyping(true);
     
-    // Ensure scroll after message is added
-    requestAnimationFrame(() => {
-      scrollToBottom(true);
-    });
-
+    // Force scroll after user message
+    scrollToBottom();
+    
     try {
-      // Get bot response
       const botResponseText = await findBotResponse(inputMessage);
-      
-      // Add bot response
       const botMessage: Message = { 
         text: botResponseText || getDefaultResponse(), 
         sender: "bot",
         timestamp: Date.now()
       };
       setMessages(prev => [...prev, botMessage]);
-      scrollToBottom(true);
+      // Force scroll after bot response
+      scrollToBottom();
     } catch (error) {
       console.error('Error getting bot response:', error);
       const errorMessage: Message = {
@@ -268,6 +275,8 @@ Time: ${new Date().toLocaleString()}
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsTyping(false);
+      // Final scroll after typing indicator is removed
+      setTimeout(scrollToBottom, 100);
     }
   };
 
@@ -337,7 +346,7 @@ Time: ${new Date().toLocaleString()}
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col relative">
+      <div className="flex-1 flex flex-col relative h-[calc(100vh-64px)]">
         {showPhoneInput ? (
           <div className="flex-1 flex items-center justify-center p-6">
             <div className="w-full max-w-sm">
@@ -379,20 +388,19 @@ Time: ${new Date().toLocaleString()}
             {/* Messages */}
             <div 
               ref={chatContainerRef}
-              className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 space-y-3 sm:space-y-4 scroll-smooth [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100/20 [&::-webkit-scrollbar-thumb]:bg-brand-500/40 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-brand-500/60"
+              className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 space-y-3 sm:space-y-4"
               style={{ 
+                height: 'calc(100vh - 180px)',
+                maxHeight: 'calc(100vh - 180px)',
                 paddingBottom: '80px',
-                overflowY: 'scroll',
-                WebkitOverflowScrolling: 'touch',
                 scrollbarWidth: 'thin',
-                scrollbarColor: 'rgba(99, 102, 241, 0.4) rgba(229, 231, 235, 0.1)',
-                msOverflowStyle: '-ms-autohiding-scrollbar'
+                scrollbarColor: 'rgba(99, 102, 241, 0.4) transparent'
               }}
             >
               {messages.map((msg, index) => (
                 <div 
                   key={index}
-                  className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
+                  className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div 
                     className={`max-w-[85%] rounded-xl p-2.5 sm:px-4 sm:py-2.5 ${
@@ -406,7 +414,7 @@ Time: ${new Date().toLocaleString()}
                 </div>
               ))}
               {isTyping && (
-                <div className="flex justify-start animate-fade-in">
+                <div className="flex justify-start">
                   <div className="max-w-[85%] rounded-xl p-2.5 sm:px-4 sm:py-2.5 bg-gray-50/80 text-gray-800 dark:bg-gray-800/80 dark:text-white backdrop-blur-sm">
                     <p className="text-sm">typing...</p>
                   </div>
@@ -416,7 +424,7 @@ Time: ${new Date().toLocaleString()}
             </div>
 
             {/* Input */}
-            <div className="fixed bottom-0 left-0 right-0 sm:left-auto sm:right-0 sm:w-[380px] p-3 sm:p-4 bg-white/95 dark:bg-gray-900/95 border-t border-gray-100/50 dark:border-gray-800/50">
+            <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 bg-white/95 dark:bg-gray-900/95 border-t border-gray-100/50 dark:border-gray-800/50">
               <div className="flex items-center gap-2">
                 <input
                   type="text"
