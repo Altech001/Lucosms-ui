@@ -88,7 +88,7 @@ function Tutorials() {
       if (alert) {
         const timer = setTimeout(() => {
           setAlert(null);
-        }, 6000);
+        }, 3000);
         return () => clearTimeout(timer);
       }
     }, [alert]);
@@ -669,7 +669,7 @@ function Tutorials() {
 
       {/* Video Modal */}
       {selectedTutorial && !showTranscript && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-90 flex items-center justify-center">
           <div
             className="fixed inset-0 bg-black/75"
             onClick={() => {
