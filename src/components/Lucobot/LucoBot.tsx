@@ -3,7 +3,7 @@ import { useAuth } from "@clerk/clerk-react";
 import knowledge from '../../data/lucobot-knowledge.json';
 import { BotKnowledge } from '@/types/botTypes';
 import { getGeminiResponse } from '@/utils/gemini';
-import Alert from '@/components/AlertBanner';
+import Alert from '@/utils/ui/alert/Alert';
 
 interface Message {
   text: string;
@@ -15,7 +15,7 @@ function LucoBot() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isVisible, setIsVisible] = useState(true);
   const [showPhoneInput, setShowPhoneInput] = useState(true);
-  const [alert, setAlert] = useState<{ variant: "success" | "error"; title: string; message: string } | null>(null);
+  const [alert, setAlert] = useState<{ variant: "success" | "error" | "warning" | "info"; title: string; message: string } | null>(null);
   const [messages, setMessages] = useState<Message[]>(() => {
     try {
       const saved = localStorage.getItem(`lucobot_messages_${phoneNumber}`);
@@ -167,8 +167,6 @@ Time: ${new Date().toLocaleString()}
         timestamp: Date.now()
       }]);
       scrollToBottom();
-    } else {
-      alert('Please enter your phone number.');
     }
   }, [phoneNumber, knowledgeBase.menuOptions, scrollToBottom]);
 
@@ -312,7 +310,7 @@ Time: ${new Date().toLocaleString()}
   return (
     <div className="fixed right-0 top-0 h-screen w-full sm:w-[380px] flex flex-col bg-white/95 border-l border-gray-100 dark:bg-gray-900/95 dark:border-gray-800 z-[999]">
       {alert && (
-        <div className="absolute top-4 right-4 z-50 w-80 shadow-lg">
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[9999] w-80">
           <Alert variant={alert.variant} title={alert.title} message={alert.message} showLink={false} />
         </div>
       )}
@@ -348,6 +346,17 @@ Time: ${new Date().toLocaleString()}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              </button>
+              <button 
+                onClick={() => {
+                  sendConversationToAdmin();
+                }}
+                className="p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-100/50 dark:hover:bg-gray-800/50"
+                title="Send to Admin"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </button>
             </>
