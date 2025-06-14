@@ -316,10 +316,6 @@ function Schedules() {
     }
   };
 
-  function stopPropagation() {
-    throw new Error("Function not implemented.");
-  }
-
   return (
     <>
       <PageMeta title="Schedule Messages" description="Schedule and automate your SMS messages" />
