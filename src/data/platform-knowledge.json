@@ -1,0 +1,106 @@
+{
+  "topics": [
+    {
+      "id": "getting-started",
+      "title": "Getting Started",
+      "subtopics": [
+        "Account Setup",
+        "Platform Overview",
+        "First Message",
+        "Dashboard Navigation"
+      ]
+    },
+    {
+      "id": "messaging",
+      "title": "Messaging Features",
+      "subtopics": [
+        "Composing Messages",
+        "Message Templates",
+        "Bulk Messaging",
+        "Message Scheduling"
+      ]
+    },
+    {
+      "id": "contacts",
+      "title": "Contact Management",
+      "subtopics": [
+        "Adding Contacts",
+        "Contact Groups",
+        "Contact Import/Export",
+        "Contact Segmentation"
+      ]
+    },
+    {
+      "id": "api-integration",
+      "title": "API Integration",
+      "subtopics": [
+        "API Overview",
+        "Authentication",
+        "Sending Messages via API",
+        "Webhook Integration"
+      ]
+    },
+    {
+      "id": "sms templaets",
+      "title": "SMS Templates",
+      "subtopics": [
+        "Creating Templates",
+        "Using Templates",
+        "Template Management",
+        "Template Best Practices"        
+      ]
+    },
+    {
+      "id": "billing",
+      "title": "Billing & Credits",
+      "subtopics": [
+        "Credit System",
+        "Payment Methods",
+        "Usage Tracking",
+        "Billing History"
+      ]
+    }
+  ],
+  "features": {
+    "messaging": {
+      "capabilities": [
+        "SMS",
+        "MMS",
+        "Bulk Messaging",
+        "Scheduled Messages",
+        "Message Templates"
+      ],
+      "limits": {
+        "maxBulkRecipients": 10000,
+        "maxTemplates": 100,
+        "maxScheduledMessages": 1000
+      }
+    },
+    "contacts": {
+      "capabilities": [
+        "Contact Groups",
+        "CSV Import/Export",
+        "Contact Tagging",
+        "Dynamic Lists"
+      ],
+      "limits": {
+        "maxContacts": 100000,
+        "maxGroups": 500
+      }
+    },
+    "api": {
+      "capabilities": [
+        "REST API",
+        "Webhooks",
+        "SDKs",
+        "API Keys Management"
+      ],
+      "rateLimit": {
+        "requests": 100,
+        "period": "per minute"
+      }
+    }
+  }
+}
+
+

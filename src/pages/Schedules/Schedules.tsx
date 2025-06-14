@@ -319,12 +319,7 @@ function Schedules() {
   return (
     <>
       <PageMeta title="Schedule Messages" description="Schedule and automate your SMS messages" />
-      <PageBreadcrumb pageTitle={""}      
-        // breadcrumbs={[
-        //   { name: "Dashboard", href: "/" },
-        //   { name: "Schedules", href: "/schedules" },
-        // ]}
-      />
+      <PageBreadcrumb pageTitle="Schedule Messages" />
 
       <div className="mx-auto max-w-6xl px-4 py-8">
         {alert && (
