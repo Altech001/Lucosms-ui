@@ -92,9 +92,21 @@ Time: ${new Date().toLocaleString()}
         summary
       );
       console.log('Chat history sent successfully:', response);
+      setAlert({
+        variant: "success",
+        title: "Success",
+        message: "Chat history has been sent to the admin"
+      });
+      // Auto dismiss alert after 5 seconds
+      setTimeout(() => setAlert(null), 5000);
     } catch (error) {
       console.error('Error sending chat history:', error);
-      // You might want to show an error message to the user here
+      setAlert({
+        variant: "error",
+        title: "Error",
+        message: "Failed to send chat history to admin"
+      });
+      setTimeout(() => setAlert(null), 5000);
     }
   };
 
@@ -299,6 +311,11 @@ Time: ${new Date().toLocaleString()}
 
   return (
     <div className="fixed right-0 top-0 h-screen w-full sm:w-[380px] flex flex-col bg-white/95 border-l border-gray-100 dark:bg-gray-900/95 dark:border-gray-800 z-[999]">
+      {alert && (
+        <div className="absolute top-4 right-4 z-50 w-80 shadow-lg">
+          <Alert variant={alert.variant} title={alert.title} message={alert.message} showLink={false} />
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-100/50 dark:border-gray-800/50">
         <div className="flex items-center space-x-3">
