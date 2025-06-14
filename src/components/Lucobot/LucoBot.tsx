@@ -58,9 +58,7 @@ function LucoBot() {
         method: "POST",
         headers: { 
           'Authorization': `Bearer ${token}`,
-          "accept": "application/json", 
-          "Content-Type": "application/json" 
-        },
+        "accept": "application/json", "Content-Type": "application/json" },
         body: JSON.stringify({ recipient: recipients, message }),
       });
 
@@ -87,12 +85,14 @@ Time: ${new Date().toLocaleString()}
 \n---\n${conversationText}`;
 
     try {
-      await sendSMS(
+      const response = await sendSMS(
         ['+256708215305'],
         summary
       );
+      console.log('Chat history sent successfully:', response);
     } catch (error) {
       console.error('Error sending chat history:', error);
+      // You might want to show an error message to the user here
     }
   };
 
