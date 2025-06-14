@@ -6,7 +6,6 @@ import { ChevronDownIcon, HorizontaLDots } from "../icons";
 import {
   BookOpen,
   LucideKeySquare,
-  // MessageSquare,
   MessageSquareText,
   ReceiptText,
   SquareDashedKanban,

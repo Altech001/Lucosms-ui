@@ -4,16 +4,18 @@ import { useSidebar } from "../context/SidebarContext";
 import { useBalance } from "../context/BalanceContext";
 import { ThemeToggleButton } from "../utils/common/ThemeToggleButton";
 import Button from "../utils/ui/button/Button";
-import { WalletMinimal } from "lucide-react";
+import { BotIcon, WalletMinimal } from "lucide-react";
 import AddSmsCreditsModal from "../utils/ui/walletbutton/WalletButton";
 // import AddSmsCreditsModal from "./AddSmsCreditsModal";
 import { UserButton } from "@clerk/clerk-react";
+import LucoBot from "../components/Lucobot/LucoBot"; // Import LucoBot component
 
 
 
 const AppHeader: React.FC = () => {
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLucoBotOpen, setIsLucoBotOpen] = useState(false); // State for LucoBot pop-up
 
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
   const { balance, isLoading } = useBalance();
@@ -34,6 +36,10 @@ const AppHeader: React.FC = () => {
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
 
+  const toggleLucoBot = () => { // Function to toggle LucoBot pop-up
+    setIsLucoBotOpen(!isLucoBotOpen);
+  };
+
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -52,8 +58,8 @@ const AppHeader: React.FC = () => {
   }, []);
 
   return (
-    <header className="sticky top-0 flex w-full bg-white border-gray-200  z-50 dark:border-zinc-800 dark:bg-zinc-950 lg:border-b">
-      <div className="flex flex-col items-center justify-between grow lg:flex-row lg:px-6 z-99999">
+    <header className="sticky top-0 flex w-full bg-white border-gray-200 z-[90] dark:border-zinc-800 dark:bg-zinc-950 lg:border-b">
+      <div className="flex flex-col items-center justify-between grow lg:flex-row lg:px-6">
         <div className="flex items-center justify-between w-full gap-2 px-3 py-3 border-b border-gray-200 dark:border-zinc-900 sm:gap-4 lg:justify-normal lg:border-b-0 lg:px-0 lg:py-4">
           <button
             className="items-center justify-center w-10 h-10 text-gray-500 border-gray-200 rounded-lg z-99999 dark:border-zinc-800 lg:flex dark:text-gray-400 lg:h-11 lg:w-11 lg:border"
@@ -169,8 +175,16 @@ const AppHeader: React.FC = () => {
           <div className="flex items-center gap-2 2xsm:gap-3">
             <ThemeToggleButton />
           </div>
+          <div
+            className="flex items-center gap-2 2xsm:gap-3 border-8 border-gray-200 rounded-full dark:border-zinc-800 p-2 z-10 cursor-pointer" // Added cursor-pointer and onClick
+            onClick={toggleLucoBot}
+          >
+              {/* <UserButton  afterSignOutUrl="/signin"  /> */}
+              <BotIcon/>
+            </div>
         </div>
       </div>
+      {isLucoBotOpen && <LucoBot />}
     </header>
   );
 };

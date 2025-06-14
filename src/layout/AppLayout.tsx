@@ -17,6 +17,16 @@ const LayoutContent: React.FC = () => {
   const [, setIsLoading] = useState(true);
   const [, setError] = useState<string | null>(null);
   const [showAlert] = useState(true);
+  const [showInfoAlert, setShowInfoAlert] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowInfoAlert(false);
+    }, 10000); // Hide after 6 seconds
+
+    return () => clearTimeout(timer); // Clean up the timer
+
+  }, []); // Run only once on mount
 
   useEffect(() => {
     setIsLoading(true);
@@ -73,8 +83,15 @@ const LayoutContent: React.FC = () => {
         {showAlert && actualBalance !== null && actualBalance < 1000 && (
           <AlertBanner
             type="warning"
-            message="Low balance alert! Your balance is less than 100 UGX. Please recharge to continue sending messages."
+            message="Low balance alert! Your balance is less than 1000 UGX. Please recharge to continue sending messages."
             // onClose={() => setShowAlert(false)}
+          />
+        )}
+        {showInfoAlert && (
+          <AlertBanner
+            type="info"
+            message="Welcome to the LucoSMS! Please note that this is a Beta version."
+            
           />
         )}
         <div className="p-4 max-w-[1200px] md:p-6">
