@@ -3,6 +3,7 @@ import { useAuth } from "@clerk/clerk-react";
 import knowledge from '../../data/lucobot-knowledge.json';
 import { BotKnowledge } from '@/types/botTypes';
 import { getGeminiResponse } from '@/utils/gemini';
+import Alert from '@/components/AlertBanner';
 
 interface Message {
   text: string;
@@ -14,6 +15,7 @@ function LucoBot() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isVisible, setIsVisible] = useState(true);
   const [showPhoneInput, setShowPhoneInput] = useState(true);
+  const [alert, setAlert] = useState<{ variant: "success" | "error"; title: string; message: string } | null>(null);
   const [messages, setMessages] = useState<Message[]>(() => {
     try {
       const saved = localStorage.getItem(`lucobot_messages_${phoneNumber}`);
