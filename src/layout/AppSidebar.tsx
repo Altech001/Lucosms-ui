@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 
-import {
-  ChevronDownIcon,
-  HorizontaLDots,
-} from "../icons";
+import { ChevronDownIcon, HorizontaLDots } from "../icons";
 
 import {
   BookOpen,
@@ -13,6 +10,8 @@ import {
   MessageSquareText,
   ReceiptText,
   SquareDashedKanban,
+  TimerIcon,
+  VideoIcon,
 } from "lucide-react";
 
 import { useSidebar } from "../context/SidebarContext";
@@ -50,6 +49,13 @@ const navItems: NavItem[] = [
   },
 
   {
+    name: "Schedules",
+    icon: <TimerIcon />,
+    path: "/schedules",
+
+  },
+
+  {
     name: "Developer",
     icon: <LucideKeySquare />,
     path: "/developer",
@@ -57,6 +63,11 @@ const navItems: NavItem[] = [
       { name: "API Keys", path: "/developer", pro: true },
       { name: "Docs", path: "/docs", pro: true },
     ],
+  },
+  {
+    name: "Tutorials",
+    icon: <VideoIcon />,
+    path: "/tutorials",
   },
 ];
 
