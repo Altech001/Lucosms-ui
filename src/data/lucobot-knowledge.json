@@ -1,0 +1,95 @@
+{
+  "menuOptions": {
+    "1": {
+      "title": "📱 Sending SMS Messages",
+      "response": "Here's how to send messages with LucoSMS:\n\n1️⃣ Cost per SMS: 32 UGX\n2️⃣ You can send to multiple contacts\n3️⃣ Maximum length: 160 characters\n4️⃣ Delivery reports available\n\nNeed help topping up your balance?",
+      "endpoints": {
+        "send_sms": "/api/v1/send_sms",
+        "balance_check": "/user/api/v1/wallet-balance"
+      },
+      "relatedTopics": ["templates", "contacts", "balance"]
+    },
+    "2": {
+      "title": "👥 Managing Contacts",
+      "response": "You can manage contacts in several ways:\n1. Import contacts from Excel/CSV\n2. Add contacts manually\n3. Create contact groups\n\nTo import contacts:\n- Click 'Import Contacts'\n- Upload Excel/CSV file\n- Follow the format guide\n\nNeed help with contact management?",
+      "endpoints": {
+        "import_contacts": "/api/v1/import-contacts",
+        "add_contact": "/api/v1/contacts"
+      },
+      "relatedTopics": ["import", "groups", "excel"]
+    },
+    "3": {
+      "title": "💰 Account Balance",
+      "response": "Your SMS credit balance can be:\n1. Checked in the top navigation\n2. Recharged through mobile money\n3. Monitored in usage reports\n\nTo add credits:\n- Click 'Wallet' button\n- Choose amount\n- Complete payment\n\nNeed help with balance or payments?",
+      "endpoints": {
+        "check_balance": "/user/api/v1/wallet-balance",
+        "add_credits": "/api/v1/add-credits"
+      },
+      "relatedTopics": ["payment", "credits", "wallet"]
+    },
+    "4": {
+      "title": "📝 Message Templates",
+      "response": "Message templates help you save and reuse messages:\n1. Create templates in Templates page\n2. Use variables like [name]\n3. Access templates while composing\n\nTo create a template:\n- Go to Templates page\n- Click 'New Template'\n- Add content and save\n\nNeed help with templates?",
+      "endpoints": {
+        "templates": "/api/v1/templates",
+        "create_template": "/api/v1/templates/create"
+      },
+      "relatedTopics": ["variables", "compose", "bulk"]
+    },
+    "5": {
+      "title": "⏰ Schedule Messages",
+      "response": "Schedule messages to send later:\n1. Compose your message\n2. Click Schedule instead of Send\n3. Choose date and time\n\nView scheduled:\n- Go to Schedule page\n- Manage pending messages\n\nNeed help with scheduling?",
+      "endpoints": {
+        "schedule": "/api/v1/schedule",
+        "view_scheduled": "/api/v1/scheduled-messages"
+      },
+      "relatedTopics": ["timezone", "recurring", "bulk"]
+    }
+  },
+  "quickResponses": {
+    "greetings": {
+      "keywords": ["hi", "hello", "hey", "start", "help"],
+      "responses": [
+        "Hello! 👋 How can I help you today?",
+        "Hi there! What would you like to know about LucoSMS?",
+        "Welcome! I'm here to help with your LucoSMS questions."
+      ]
+    },
+    "farewell": {
+      "keywords": ["bye", "goodbye", "thanks", "thank you"],
+      "responses": [
+        "Happy to help! Let me know if you need anything else. 👋",
+        "You're welcome! Have a great day! 😊",
+        "Thanks for chatting! Feel free to return anytime you need help. 🤝"
+      ]
+    }
+  },
+  "commonQuestions": {
+    "how_to_send_sms": {
+      "response": "To send an SMS:\n1. Click 'Compose'\n2. Select recipients\n3. Write message\n4. Click Send\n\nCost: 32 UGX per message",
+      "relatedTopics": ["compose", "contacts"]
+    },
+    "check_balance": {
+      "response": "Your balance is shown in the top navigation bar. Click the wallet icon to add more credits.",
+      "relatedTopics": ["payment", "wallet"]
+    },
+    "import_contacts": {
+      "response": "Import contacts via Excel/CSV:\n1. Prepare file with columns: name, phone\n2. Click Import Contacts\n3. Upload file\n4. Map columns\n5. Confirm import",
+      "relatedTopics": ["contacts", "bulk"]
+    }
+  },
+  "keywords": {
+    "pricing": {
+      "matches": ["price", "cost", "rate", "charge"],
+      "response": "Our SMS pricing:\n- Local: 32 UGX/SMS\n- East Africa: 100 UGX/SMS\n- International: 200 UGX/SMS\n\nBulk discounts available for high volumes."
+    },
+    "support": {
+      "matches": ["help", "support", "contact", "issue", "problem"],
+      "response": "Need support? We're here to help!\n\n📞 Call: +256 708 215 305\n✉️ Email: support@lucosms.com\n⏰ Hours: 24/7"
+    },
+    "error": {
+      "matches": ["error", "failed", "problem", "issue", "not working"],
+      "response": "Sorry to hear you're having trouble! Please:\n1. Check your internet connection\n2. Verify your account balance\n3. Double-check recipient numbers\n\nStill having issues? Contact our support team."
+    }
+  }
+}

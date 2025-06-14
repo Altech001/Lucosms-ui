@@ -1,20 +1,55 @@
-import { useState, useRef, useEffect } from 'react';
-import { sendMessageToGemini } from '../../lib/api/gemini-api';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from "@clerk/clerk-react";
+import knowledge from '../../data/lucobot-knowledge.json';
+import { BotKnowledge } from '@/types/botTypes';
+import { getGeminiResponse } from '@/utils/gemini';
 
 interface Message {
   text: string;
-  sender: 'user' | 'bot';
+  sender: "user" | "bot";
+  timestamp?: number;
 }
 
 function LucoBot() {
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [isVisible, setIsVisible] = useState(true);
   const [showPhoneInput, setShowPhoneInput] = useState(true);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [inputMessage, setInputMessage] = useState('');
+  const [messages, setMessages] = useState<Message[]>(() => {
+    try {
+      const saved = localStorage.getItem(`lucobot_messages_${phoneNumber}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [inputMessage, setInputMessage] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const { getToken } = useAuth();
+  const knowledgeBase = knowledge as BotKnowledge;
+
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (phoneNumber && messages.length > 0) {
+      localStorage.setItem(`lucobot_messages_${phoneNumber}`, JSON.stringify(messages));
+    }
+  }, [messages, phoneNumber]);
+
+  // Load messages when phone number changes
+  useEffect(() => {
+    if (phoneNumber) {
+      try {
+        const saved = localStorage.getItem(`lucobot_messages_${phoneNumber}`);
+        if (saved) {
+          const parsedMessages = JSON.parse(saved);
+          setMessages(parsedMessages);
+        }
+      } catch (error) {
+        console.error('Error loading messages:', error);
+      }
+    }
+  }, [phoneNumber]);
 
   const sendSMS = async (recipients: string[], message: string) => {
     try {
@@ -68,51 +103,171 @@ Time: ${new Date().toLocaleString()}
     setIsVisible(false);
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const scrollToBottom = useCallback((smooth = true) => {
+    setTimeout(() => {
+      if (chatContainerRef.current) {
+        const scrollHeight = chatContainerRef.current.scrollHeight;
+        const height = chatContainerRef.current.clientHeight;
+        const maxScrollTop = scrollHeight - height;
+        chatContainerRef.current.scrollTo({
+          top: maxScrollTop,
+          behavior: smooth ? 'smooth' : 'auto'
+        });
+      }
+    }, 100);
+  }, []);
 
+  // Scroll when messages change
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (messages.length > 0) {
+      scrollToBottom(true);
+    }
+  }, [messages, scrollToBottom]);
 
-  const handlePhoneNumberSubmit = () => {
+  // Scroll on initial load
+  useEffect(() => {
+    scrollToBottom(false);
+  }, [scrollToBottom]);
+
+  const handlePhoneNumberSubmit = useCallback(() => {
     if (phoneNumber.trim() !== '') {
       setShowPhoneInput(false);
-      setMessages([
-        { 
-          text: 'Welcome to the LucoSMS Help Center! How can I assist you today?\n\n' +
-                'Here are some topics I can help with:\n' +
-                '1. Sending SMS Messages\n' +
-                '2. Managing Contacts\n' +
-                '3. Account Balance\n' +
-                '4. Message Templates\n' +
-                '5. Scheduling Messages\n\n' +
-                'Please type a number or describe your question.',
-          sender: 'bot' 
-        }
-      ]);
+      const menuItems = Object.entries(knowledgeBase.menuOptions)
+        .map(([id, option]) => `${id}. ${option.title}`)
+        .join('\n');
+      const welcomeMessage = `Welcome to the LucoSMS Help Center! 🤖\nHow can I assist you today?\n\nHere are some topics I can help with:\n${menuItems}\n\nPlease type a number or describe your question.`;
+      setMessages([{ 
+        text: welcomeMessage,
+        sender: 'bot',
+        timestamp: Date.now()
+      }]);
+      scrollToBottom(false);
     } else {
       alert('Please enter your phone number.');
     }
+  }, [phoneNumber, knowledgeBase.menuOptions, scrollToBottom]);
+
+  const findBotResponse = async (userMessage: string): Promise<string> => {
+    const lowerMessage = userMessage.toLowerCase().trim();
+    
+    // Try Gemini API first
+    const geminiResponse = await getGeminiResponse(userMessage, knowledgeBase);
+    if (geminiResponse) {
+      return geminiResponse;
+    }
+    
+    // Fallback to knowledge base if Gemini fails
+    // Direct number input for menu options
+    if (/^[1-5]$/.test(userMessage)) {
+      return knowledgeBase.menuOptions[userMessage]?.response || getDefaultResponse();
+    }
+
+    // Check for greetings
+    if (knowledgeBase.quickResponses.greetings.keywords.some(k => lowerMessage.includes(k.toLowerCase()))) {
+      const responses = knowledgeBase.quickResponses.greetings.responses;
+      return responses[Math.floor(Math.random() * responses.length)];
+    }
+
+    // Check for farewell
+    if (knowledgeBase.quickResponses.farewell.keywords.some(k => lowerMessage.includes(k.toLowerCase()))) {
+      const responses = knowledgeBase.quickResponses.farewell.responses;
+      return responses[Math.floor(Math.random() * responses.length)];
+    }
+
+    // Check for keywords with highest match priority
+    let bestMatch = {
+      response: "",
+      matchCount: 0
+    };
+
+    // Check keywords
+    Object.values(knowledgeBase.keywords).forEach(keywordData => {
+      const matchCount = keywordData.matches.filter(k => 
+        lowerMessage.includes(k.toLowerCase())
+      ).length;
+      if (matchCount > bestMatch.matchCount) {
+        bestMatch = {
+          response: keywordData.response,
+          matchCount
+        };
+      }
+    });
+
+    if (bestMatch.matchCount > 0) {
+      return bestMatch.response;
+    }
+
+    // Check common questions with partial matching
+    Object.entries(knowledgeBase.commonQuestions).forEach(([key, data]) => {
+      const matchCount = key.toLowerCase().split(" ").filter(word => 
+        lowerMessage.includes(word)
+      ).length;
+      if (matchCount > bestMatch.matchCount) {
+        bestMatch = {
+          response: data.response,
+          matchCount
+        };
+      }
+    });
+
+    if (bestMatch.matchCount > 0) {
+      return bestMatch.response;
+    }
+
+    // Default response with menu
+    return "I'm not sure about that. Here are the topics I can help with:\n" +
+           Object.entries(knowledgeBase.menuOptions)
+             .map(([id, option]) => `${id}. ${option.title}`)
+             .join('\n');
   };
 
-  // Handle sending a message to the bot
+  const getDefaultResponse = (): string => {
+    const menuItems = Object.entries(knowledgeBase.menuOptions)
+      .map(([id, option]) => `${id}. ${option.title}`)
+      .join('\n');
+    return "I'm not sure I understand. Here are the topics I can help with:\n" + menuItems + "\n\nPlease choose a topic or rephrase your question.";
+  };
+
   const handleSendMessage = async () => {
     if (inputMessage.trim() === '') return;
 
-    const userMessage: Message = { text: inputMessage, sender: 'user' };
-    setMessages((prevMessages) => [...prevMessages, userMessage]);
-    setInputMessage('');
+    const userMessage: Message = { 
+      text: inputMessage, 
+      sender: "user",
+      timestamp: Date.now()
+    };
+    
+    setInputMessage(''); // Clear input first
+    setMessages(prev => [...prev, userMessage]);
+    setIsTyping(true);
+    
+    // Ensure scroll after message is added
+    requestAnimationFrame(() => {
+      scrollToBottom(true);
+    });
 
     try {
-      const botResponseText = await sendMessageToGemini(inputMessage);
-      const botMessage: Message = { text: botResponseText, sender: 'bot' };
-      setMessages((prevMessages) => [...prevMessages, botMessage]);
+      // Get bot response
+      const botResponseText = await findBotResponse(inputMessage);
+      
+      // Add bot response
+      const botMessage: Message = { 
+        text: botResponseText || getDefaultResponse(), 
+        sender: "bot",
+        timestamp: Date.now()
+      };
+      setMessages(prev => [...prev, botMessage]);
+      scrollToBottom(true);
     } catch (error) {
-      console.error('Error sending message to Gemini API:', error);
-      const errorMessage: Message = { text: 'Error: Could not get a response from the bot.', sender: 'bot' };
-      setMessages((prevMessages) => [...prevMessages, errorMessage]);
+      console.error('Error getting bot response:', error);
+      const errorMessage: Message = {
+        text: "I apologize, but I'm having trouble responding right now. Please try again.",
+        sender: "bot",
+        timestamp: Date.now()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsTyping(false);
     }
   };
 
@@ -132,12 +287,12 @@ Time: ${new Date().toLocaleString()}
   if (!isVisible) return null;
 
   return (
-    <div className="fixed right-0 top-0 h-screen w-[380px] flex flex-col bg-white/95 backdrop-blur-md border-l border-gray-200/50 dark:bg-gray-900/95 dark:border-gray-800/50 z-[999]">
-      {/* Header - Always visible */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200/50 dark:border-gray-800/50">
+    <div className="fixed right-0 top-0 h-screen w-full sm:w-[380px] flex flex-col bg-white/95 border-l border-gray-100 dark:bg-gray-900/95 dark:border-gray-800 z-[999]">
+      {/* Header */}
+      <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-100/50 dark:border-gray-800/50">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-full bg-brand-50 dark:bg-brand-900/50 flex items-center justify-center">
-            <svg className="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-8 h-8 rounded-lg bg-brand-50/50 dark:bg-brand-900/25 flex items-center justify-center">
+            <svg className="w-4 h-4 text-brand-500/90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4l-4 4-4-4z" />
             </svg>
           </div>
@@ -145,19 +300,33 @@ Time: ${new Date().toLocaleString()}
         </div>
         <div className="flex items-center space-x-2">
           {!showPhoneInput && (
-            <button 
-              onClick={handleDownloadConversation}
-              className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-              title="Download Conversation"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-            </button>
+            <>
+              <button 
+                onClick={() => {
+                  localStorage.removeItem(`lucobot_messages_${phoneNumber}`);
+                  setMessages([]);
+                }}
+                className="p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-100/50 dark:hover:bg-gray-800/50"
+                title="Clear Conversation"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+              <button 
+                onClick={handleDownloadConversation}
+                className="p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-100/50 dark:hover:bg-gray-800/50"
+                title="Download Conversation"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              </button>
+            </>
           )}
           <button
             onClick={handleClose}
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white transition-colors rounded-lg"
+            className="p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-100/50 dark:hover:bg-gray-800/50"
             title="Close Bot"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -167,8 +336,8 @@ Time: ${new Date().toLocaleString()}
         </div>
       </div>
 
-      {/* Content area */}
-      <div className="flex-1 flex flex-col">
+      {/* Content */}
+      <div className="flex-1 flex flex-col relative">
         {showPhoneInput ? (
           <div className="flex-1 flex items-center justify-center p-6">
             <div className="w-full max-w-sm">
@@ -193,7 +362,7 @@ Time: ${new Date().toLocaleString()}
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   placeholder="Enter your phone number"
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 dark:bg-gray-800/50 dark:border-gray-700 dark:text-white dark:placeholder-gray-400"
+                  className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 dark:text-white dark:placeholder-gray-400"
                   maxLength={15}
                 />
                 <button 
@@ -208,35 +377,53 @@ Time: ${new Date().toLocaleString()}
         ) : (
           <>
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+            <div 
+              ref={chatContainerRef}
+              className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 space-y-3 sm:space-y-4 scroll-smooth [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100/20 [&::-webkit-scrollbar-thumb]:bg-brand-500/40 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-brand-500/60"
+              style={{ 
+                paddingBottom: '80px',
+                overflowY: 'scroll',
+                WebkitOverflowScrolling: 'touch',
+                scrollbarWidth: 'thin',
+                scrollbarColor: 'rgba(99, 102, 241, 0.4) rgba(229, 231, 235, 0.1)',
+                msOverflowStyle: '-ms-autohiding-scrollbar'
+              }}
+            >
               {messages.map((msg, index) => (
                 <div 
                   key={index}
-                  className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
                 >
                   <div 
-                    className={`max-w-[85%] rounded-xl px-4 py-2.5 ${
+                    className={`max-w-[85%] rounded-xl p-2.5 sm:px-4 sm:py-2.5 ${
                       msg.sender === 'user' 
-                        ? 'bg-brand-500 text-white' 
-                        : 'bg-gray-50/80 backdrop-blur-sm text-gray-800 dark:bg-gray-800/80 dark:text-white'
+                        ? 'bg-brand-500/90 text-white backdrop-blur-sm' 
+                        : 'bg-gray-50/80 text-gray-800 dark:bg-gray-800/80 dark:text-white backdrop-blur-sm'
                     }`}
                   >
-                    <p className="text-sm">{msg.text}</p>
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.text}</p>
                   </div>
                 </div>
               ))}
-              <div ref={messagesEndRef} />
+              {isTyping && (
+                <div className="flex justify-start animate-fade-in">
+                  <div className="max-w-[85%] rounded-xl p-2.5 sm:px-4 sm:py-2.5 bg-gray-50/80 text-gray-800 dark:bg-gray-800/80 dark:text-white backdrop-blur-sm">
+                    <p className="text-sm">typing...</p>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} className="h-[1px]" />
             </div>
 
             {/* Input */}
-            <div className="p-4 backdrop-blur-md bg-white/50 border-t border-gray-200/50 dark:bg-gray-800/50 dark:border-gray-700/50">
+            <div className="fixed bottom-0 left-0 right-0 sm:left-auto sm:right-0 sm:w-[380px] p-3 sm:p-4 bg-white/95 dark:bg-gray-900/95 border-t border-gray-100/50 dark:border-gray-800/50">
               <div className="flex items-center gap-2">
                 <input
                   type="text"
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   placeholder="Type your message..."
-                  className="flex-1 px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200/50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 dark:border-gray-700/50 dark:text-white dark:placeholder-gray-400"
+                  className="flex-1 px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200/50 dark:border-gray-700/50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 dark:text-white dark:placeholder-gray-400"
                   onKeyPress={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
@@ -246,7 +433,8 @@ Time: ${new Date().toLocaleString()}
                 />
                 <button 
                   onClick={handleSendMessage}
-                  className="px-4 py-2.5 text-white bg-brand-500 rounded-xl hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:ring-offset-2 transition-colors duration-200"
+                  className="px-4 py-2.5 text-white bg-brand-500/90 rounded-xl hover:bg-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:ring-offset-2 transition-all duration-200 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!inputMessage.trim()}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
