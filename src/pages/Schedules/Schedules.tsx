@@ -18,6 +18,7 @@ interface ScheduledMessage {
   aiGenerated: boolean;
 }
 
+
 // Utility function to generate AI response (Gemini-style)
 const generateAIResponse = async (prompt: string): Promise<{ message: string; scheduledTime: Date }> => {
   const GEMINI_API_KEY = "AIzaSyBefEfnVTBw2BjHSoPgRx372NEuxh0irbM";
