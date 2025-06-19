@@ -16,6 +16,7 @@ import { AuthGuard } from "./components/Auth/AuthGuard";
 import SignIn from "./pages/AuthPages/SignIn";
 import Schedules from "./pages/Schedules/Schedules";
 import Tutorials from "./pages/Tutorials/Tutorials";
+import Topup from "./pages/Home/Topup";
 
 // import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react'
 
@@ -43,6 +44,7 @@ export default function App() {
               </AuthGuard>
             }>
               <Route index path="/" element={<Home />} />
+              <Route path="/topup" element={<Topup />} />
               <Route path="/templates" element={<Templates />} />
               <Route path="/compose" element={<ComposeMessages />} />
               <Route path="/billings" element={<Billings />} />

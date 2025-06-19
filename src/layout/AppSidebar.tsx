@@ -28,7 +28,9 @@ const navItems: NavItem[] = [
     icon: <BookOpen />,
     name: "Home",
     path: "/",
-    // subItems: [{ name: "Ecommerce", path: "/", pro: false }],
+    subItems: [
+      { name: "Topup", path: "/topup", pro: false }
+    ],
   },
   {
     icon: <MessageSquareText />,

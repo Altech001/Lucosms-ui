@@ -113,18 +113,3 @@ const AppLayout: React.FC = () => {
 };
 
 export default AppLayout;
-
-{/* <div className="flex items-center justify-between gap-4 max-w-[1200px] ">
-            {isLoading ? (
-              <div className="animate-pulse h-6 w-24 bg-gray-200 dark:bg-zinc-700 rounded" />
-            ) : error ? (
-              <span className="text-sm text-red-600 dark:text-red-400 font-[Outfit]">
-                {error}
-              </span>
-            ) : (
-              <span className="text-sm font-medium text-zinc-900 dark:text-white font-[Outfit]">
-                Balance: UGx {actualBalance?.toFixed(2) || "0.00"}
-              </span>
-            )}
-            {/* Add other header elements here */}
-          // </div>
