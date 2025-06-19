@@ -6,6 +6,7 @@ import { ChevronDownIcon, HorizontaLDots } from "../icons";
 import {
   BookOpen,
   LucideKeySquare,
+  MessageCircleMore,
   MessageSquareText,
   ReceiptText,
   SquareDashedKanban,
@@ -38,25 +39,41 @@ const navItems: NavItem[] = [
     name: "Compose Message",
     path: "/compose",
   },
+
+  {
+    name: "Whatsapp Chat",
+    icon: <MessageCircleMore />,
+    path: "/wchat",
+    subItems: [
+      { name: "LucoChat", path: "/wchat", pro: true },
+      { name: "Whatsapp Templates", path: "/templates", pro: true },
+    ],
+  },
   {
     icon: <SquareDashedKanban />,
     name: "SMS Templates",
     path: "/templates",
   },
-
-  {
-    name: "Billings",
-    icon: <ReceiptText />,
-    path: "/billings",
-  },
-
   {
     name: "Schedules",
     icon: <TimerIcon />,
     path: "/schedules",
 
   },
-
+    {
+    name: "BackUp & Restore",
+    icon: <BookOpen />,
+    path: "/backup",
+    subItems: [
+      { name: "Backup", path: "/backup", pro: true },
+      { name: "Restore", path: "/restore", pro: true },
+    ],
+  },
+  {
+    name: "Tutorials",
+    icon: <VideoIcon />,
+    path: "/tutorials",
+  },
   {
     name: "Developer",
     icon: <LucideKeySquare />,
@@ -67,9 +84,9 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    name: "Tutorials",
-    icon: <VideoIcon />,
-    path: "/tutorials",
+    name: "Billings",
+    icon: <ReceiptText />,
+    path: "/billings",
   },
 ];
 
