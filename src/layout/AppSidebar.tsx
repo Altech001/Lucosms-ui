@@ -29,6 +29,7 @@ const navItems: NavItem[] = [
     name: "Home",
     path: "/",
     subItems: [
+      { name: "Dashboard", path: "/", pro: false },
       { name: "Topup", path: "/topup", pro: false }
     ],
   },
