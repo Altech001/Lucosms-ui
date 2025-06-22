@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Input from "../../utils/form/input/InputField";
 import Button from "../../utils/ui/button/Button";
@@ -9,8 +9,12 @@ import PageBreadcrumb from '@/utils/common/PageBreadCrumb';
 import PageMeta from '@/utils/common/PageMeta';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { useUser } from '@clerk/clerk-react';
+import { useSearchParams } from 'react-router-dom';
+import PaymentStatusDialog from '@/components/common/PaymentStatusDialog';
 
 const Topup = () => {
+  const { user } = useUser();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -18,9 +22,81 @@ const Topup = () => {
     amount: '5000'
   });
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [dialogState, setDialogState] = useState({
+    isOpen: false,
+    status: null as 'success' | 'failed' | 'pending' | null,
+    title: '',
+    message: '',
+  });
+
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const orderSummaryRef = useRef(null);
   const presetAmounts = [5000, 10000, 25000, 50000, 100000];
+
+  useEffect(() => {
+    if (user) {
+      setFormData((prevData) => ({
+        ...prevData,
+        name: user.fullName || '',
+        email: user.primaryEmailAddress?.emailAddress || '',
+      }));
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const orderTrackingId = searchParams.get('OrderTrackingId');
+
+    const fetchPaymentStatus = async (trackingId: string) => {
+      try {
+        const response = await fetch(`https://d1b9-41-210-147-202.ngrok-free.app/v1/lucopay/payment-callback?OrderTrackingId=${trackingId}`);
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.detail || 'Failed to fetch payment status.');
+        }
+
+        let status: 'success' | 'failed' | 'pending' | null = null;
+        if (result.status_class === 'status-success') {
+          status = 'success';
+        } else if (result.status_class === 'status-failed') {
+          status = 'failed';
+        } else {
+          status = 'pending';
+        }
+        
+        setDialogState({
+          isOpen: true,
+          status,
+          title: result.title,
+          message: result.message,
+        });
+
+      } catch (err: unknown) {
+        let errorMessage = 'An error occurred while checking payment status.';
+        if (err instanceof Error) {
+          errorMessage = err.message;
+        }
+        setDialogState({
+          isOpen: true,
+          status: 'failed',
+          title: 'Error Checking Status',
+          message: errorMessage,
+        });
+      } finally {
+        // Clean up URL params after reading them
+        searchParams.delete('OrderTrackingId');
+        searchParams.delete('OrderMerchantReference'); // Pesapal also sends this
+        setSearchParams(searchParams);
+      }
+    };
+
+    if (orderTrackingId) {
+      fetchPaymentStatus(orderTrackingId);
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -34,9 +110,55 @@ const Topup = () => {
     setFormData(prev => ({ ...prev, amount: amount.toString() }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted:', formData);
+    setIsProcessing(true);
+    setError(null);
+
+    // Pesapal expects first_name and last_name, so we split the full name.
+    const nameParts = formData.name.split(' ');
+    const first_name = nameParts[0] || '';
+    const last_name = nameParts.slice(1).join(' ') || '';
+
+    const paymentData = {
+        first_name,
+        last_name,
+        email: formData.email,
+        phone_number: formData.phone,
+        amount: parseFloat(formData.amount),
+    };
+
+    try {
+        const response = await fetch('https://d1b9-41-210-147-202.ngrok-free.app/v1/lucopay/initiate-payment', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(paymentData)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.message || `Server Error: ${response.status}`);
+        }
+
+        if (result.redirect_url) {
+            window.location.href = result.redirect_url;
+        } else {
+            throw new Error('Payment initiation failed: No redirect URL received.');
+        }
+
+    } catch (err: unknown) {
+        let errorMessage = 'An unexpected error occurred. Please try again.';
+        if (err instanceof Error) {
+            errorMessage = err.message;
+        }
+        setError(errorMessage);
+    } finally {
+        setIsProcessing(false);
+    }
   };
 
   const handleDownload = async () => {
@@ -74,7 +196,19 @@ const Topup = () => {
   const amountInUGX = formData.amount ? parseFloat(formData.amount) : 0;
   const smsCredits = Math.floor(amountInUGX / 32);
 
+  const closeDialog = () => {
+    setDialogState({ isOpen: false, status: null, title: '', message: '' });
+  };
+
   return (
+    <>
+      <PaymentStatusDialog 
+        isOpen={dialogState.isOpen}
+        onClose={closeDialog}
+        status={dialogState.status}
+        title={dialogState.title}
+        message={dialogState.message}
+      />
     <div className="min-h-screen">
       <PageMeta
         title="Top Up Account | LucoSMS"
@@ -143,9 +277,14 @@ const Topup = () => {
                       </div>
                     </div>
                     
-                    <Button variant="primary" className="w-full h-12 text-lg font-semibold">
-                      Proceed to Payment <ArrowRight className="ml-2 h-5 w-5" />
+                    <Button type="submit" variant="primary" className="w-full h-12 text-lg font-semibold" disabled={isProcessing}>
+                      {isProcessing ? (
+                        <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing...</>
+                      ) : (
+                        <>Proceed to Payment <ArrowRight className="ml-2 h-5 w-5" /></>
+                      )}
                     </Button>
+                    {error && <p className="text-red-500 text-sm mt-4 text-center">{error}</p>}
                   </form>
                 </CardContent>
               </Card>
@@ -208,6 +347,7 @@ const Topup = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 
