@@ -86,15 +86,24 @@ export default function Home() {
 
       if (!response.ok) {
         if (response.status === 404) {
-          const errorData = await response.json();
-          if (
-            errorData.detail === "User not Found" ||
-            errorData.detail === "No message found"
-          ) {
-            return { noMessages: true }; // Return a special object
+          try {
+            const errorData = await response.json();
+            if (
+              errorData.detail === "User not Found" ||
+              errorData.detail === "No message found"
+            ) {
+              return { noMessages: true }; // Special object for "empty" state
+            }
+          } catch (jsonError) {
+            console.error(
+              "Failed to parse 404 error response as JSON",
+              jsonError
+            );
           }
         }
-        const errorText = await response.text();
+        const errorText = await response
+          .text()
+          .catch(() => "Could not read error body");
         throw new Error(
           `Failed to fetch SMS history: ${response.status} ${errorText}`
         );
@@ -104,6 +113,7 @@ export default function Home() {
       return processMetricsData(data);
     },
     staleTime: 5 * 60 * 1000,
+    retry: false, // Disable retries to handle errors explicitly
   });
 
   if (isMetricsLoading) {
