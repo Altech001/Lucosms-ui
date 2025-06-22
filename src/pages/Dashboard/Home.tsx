@@ -7,6 +7,7 @@ import RecentOrders from "../../utils/ecommerce/RecentOrders";
 import DemographicCard from "../../utils/ecommerce/DemographicCard";
 import PageMeta from "../../utils/common/PageMeta";
 import { Skeleton } from "../../components/ui/skeleton";
+import EmptyState from "../../components/common/EmptyState";
 
 interface SMSHistory {
   id: number;
@@ -104,17 +105,23 @@ export default function Home() {
     },
   });
 
-  // Show specific messages for different error cases
-  if (metricsError) {
+  if (
+    metricsError &&
+    metricsError instanceof Error &&
+    metricsError.message !== "User not Found" &&
+    metricsError.message !== "No message found"
+  ) {
     return (
       <div className="text-red-500 p-4">
-        {metricsError instanceof Error && 
-         (metricsError.message === "User not Found" || metricsError.message === "No message found") 
-          ? metricsError.message
-          : "Error loading dashboard data. Please try again later."}
+        Error loading dashboard data. Please try again later.
       </div>
     );
   }
+
+  const noMessages =
+    metricsError instanceof Error &&
+    (metricsError.message === "User not Found" ||
+      metricsError.message === "No message found");
 
   return (
     <>
@@ -131,33 +138,46 @@ export default function Home() {
         </p>
       </div>
       <div className="grid grid-cols-12 gap-4 md:gap-6">
-        <div className="col-span-12 space-y-6 xl:col-span-7">
-          <Suspense fallback={<MetricsSkeleton />}>
-            {isMetricsLoading ? (
-              <MetricsSkeleton />
-            ) : (
-              <EcommerceMetrics
-                data={
-                  deliveryReport ?? { total: 0, delivered: 0, failed: 0, pending: 0 }
-                }
-              />
-            )}
-          </Suspense>
+        {noMessages ? (
+          <div className="col-span-12">
+            <EmptyState />
+          </div>
+        ) : (
+          <>
+            <div className="col-span-12 space-y-6 xl:col-span-7">
+              <Suspense fallback={<MetricsSkeleton />}>
+                {isMetricsLoading ? (
+                  <MetricsSkeleton />
+                ) : (
+                  <EcommerceMetrics
+                    data={
+                      deliveryReport ?? {
+                        total: 0,
+                        delivered: 0,
+                        failed: 0,
+                        pending: 0,
+                      }
+                    }
+                  />
+                )}
+              </Suspense>
 
-          <Suspense fallback={<CardSkeleton />}>
-            <MonthlySalesChart />
-          </Suspense>
-        </div>
+              <Suspense fallback={<CardSkeleton />}>
+                <MonthlySalesChart />
+              </Suspense>
+            </div>
 
-        <div className="col-span-12 xl:col-span-5">
-          <DemographicCard />
-        </div>
+            <div className="col-span-12 xl:col-span-5">
+              <DemographicCard />
+            </div>
 
-        <div className="hidden md:grid col-span-12">
-          <Suspense fallback={<CardSkeleton />}>
-            <RecentOrders />
-          </Suspense>
-        </div>
+            <div className="hidden md:grid col-span-12">
+              <Suspense fallback={<CardSkeleton />}>
+                <RecentOrders />
+              </Suspense>
+            </div>
+          </>
+        )}
       </div>
     </>
   );
