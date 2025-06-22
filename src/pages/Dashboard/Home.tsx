@@ -63,9 +63,9 @@ const CardSkeleton = () => (
 export default function Home() {
   const { user } = useUser();
   const { getToken } = useAuth();
-  
+
   const {
-    data: deliveryReport,
+    data: queryData,
     isLoading: isMetricsLoading,
     error: metricsError,
   } = useQuery({
@@ -78,7 +78,7 @@ export default function Home() {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",                                                                                                   
+            "Content-Type": "application/json",
           },
           credentials: "include",
         }
@@ -87,41 +87,92 @@ export default function Home() {
       if (!response.ok) {
         if (response.status === 404) {
           const errorData = await response.json();
-          throw new Error(errorData.detail);
+          if (
+            errorData.detail === "User not Found" ||
+            errorData.detail === "No message found"
+          ) {
+            return { noMessages: true }; // Return a special object
+          }
         }
-        throw new Error("Failed to fetch SMS history");
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to fetch SMS history: ${response.status} ${errorText}`
+        );
       }
 
       const data: SMSHistory[] = await response.json();
       return processMetricsData(data);
     },
     staleTime: 5 * 60 * 1000,
-    retry: (failureCount, error) => {
-      // Don't retry on 404 errors
-      if (error.message === "User not Found" || error.message === "No message found") {
-        return false;
-      }
-      return failureCount < 2;
-    },
   });
 
-  if (
-    metricsError &&
-    metricsError instanceof Error &&
-    metricsError.message !== "User not Found" &&
-    metricsError.message !== "No message found"
-  ) {
+  if (isMetricsLoading) {
     return (
-      <div className="text-red-500 p-4">
-        Error loading dashboard data. Please try again later.
+      <>
+        <PageMeta
+          title={`Luco SMS - Welcome ${user?.firstName || "Back"}`}
+          description="The lucosms is a simple to use dashboard for sending bulky sms."
+        />
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+            Welcome back, {user?.firstName || "User"}! 👋
+          </h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Loading your dashboard...
+          </p>
+        </div>
+        <div className="grid grid-cols-12 gap-4 md:gap-6">
+          <div className="col-span-12 space-y-6 xl:col-span-7">
+            <MetricsSkeleton />
+            <CardSkeleton />
+          </div>
+          <div className="col-span-12 xl:col-span-5">
+            <CardSkeleton />
+          </div>
+          <div className="hidden md:grid col-span-12">
+            <CardSkeleton />
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (metricsError) {
+    console.error("Dashboard data loading failed:", metricsError);
+    return (
+      <div className="text-center py-10">
+        <h2 className="text-xl font-semibold text-red-600">
+          Something went wrong
+        </h2>
+        <p className="text-gray-500 mt-2">
+          We couldn't load your dashboard data. Please try again later.
+        </p>
       </div>
     );
   }
 
-  const noMessages =
-    metricsError instanceof Error &&
-    (metricsError.message === "User not Found" ||
-      metricsError.message === "No message found");
+  if (queryData && "noMessages" in queryData && queryData.noMessages) {
+    return (
+      <>
+        <PageMeta
+          title={`Luco SMS - Welcome ${user?.firstName || "Back"}`}
+          description="The lucosms is a simple to use dashboard for sending bulky sms."
+        />
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+            Welcome, {user?.firstName || "User"}! 👋
+          </h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            It looks like you're new here! Send your first message to get
+            started.
+          </p>
+        </div>
+        <EmptyState />
+      </>
+    );
+  }
+
+  const deliveryReport = queryData as MetricsData;
 
   return (
     <>
@@ -138,46 +189,26 @@ export default function Home() {
         </p>
       </div>
       <div className="grid grid-cols-12 gap-4 md:gap-6">
-        {noMessages ? (
-          <div className="col-span-12">
-            <EmptyState />
-          </div>
-        ) : (
-          <>
-            <div className="col-span-12 space-y-6 xl:col-span-7">
-              <Suspense fallback={<MetricsSkeleton />}>
-                {isMetricsLoading ? (
-                  <MetricsSkeleton />
-                ) : (
-                  <EcommerceMetrics
-                    data={
-                      deliveryReport ?? {
-                        total: 0,
-                        delivered: 0,
-                        failed: 0,
-                        pending: 0,
-                      }
-                    }
-                  />
-                )}
-              </Suspense>
+        <div className="col-span-12 space-y-6 xl:col-span-7">
+          <EcommerceMetrics
+            data={
+              deliveryReport ?? { total: 0, delivered: 0, failed: 0, pending: 0 }
+            }
+          />
+          <Suspense fallback={<CardSkeleton />}>
+            <MonthlySalesChart />
+          </Suspense>
+        </div>
 
-              <Suspense fallback={<CardSkeleton />}>
-                <MonthlySalesChart />
-              </Suspense>
-            </div>
+        <div className="col-span-12 xl:col-span-5">
+          <DemographicCard />
+        </div>
 
-            <div className="col-span-12 xl:col-span-5">
-              <DemographicCard />
-            </div>
-
-            <div className="hidden md:grid col-span-12">
-              <Suspense fallback={<CardSkeleton />}>
-                <RecentOrders />
-              </Suspense>
-            </div>
-          </>
-        )}
+        <div className="hidden md:grid col-span-12">
+          <Suspense fallback={<CardSkeleton />}>
+            <RecentOrders />
+          </Suspense>
+        </div>
       </div>
     </>
   );
