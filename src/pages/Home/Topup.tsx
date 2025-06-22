@@ -51,7 +51,7 @@ const Topup = () => {
 
     const fetchPaymentStatus = async (trackingId: string) => {
       try {
-        const response = await fetch(`https://d1b9-41-210-147-202.ngrok-free.app/v1/lucopay/payment-callback?OrderTrackingId=${trackingId}`);
+        const response = await fetch(`https://c2ff-41-210-147-68.ngrok-free.app/v1/lucopay/payment-callback?OrderTrackingId=${trackingId}`);
         const result = await response.json();
 
         if (!response.ok) {
@@ -129,7 +129,7 @@ const Topup = () => {
     };
 
     try {
-        const response = await fetch('https://d1b9-41-210-147-202.ngrok-free.app/v1/lucopay/initiate-payment', {
+        const response = await fetch('https://c2ff-41-210-147-68.ngrok-free.app/v1/lucopay/initiate-payment', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
