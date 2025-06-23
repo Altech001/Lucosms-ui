@@ -46,34 +46,85 @@ const Topup = () => {
     }
   }, [user]);
 
+  // useEffect(() => {
+  //   const orderTrackingId = searchParams.get('OrderTrackingId');
+
+  //   const fetchPaymentStatus = async (trackingId: string) => {
+  //     try {
+  //       const response = await fetch(`https://2477-41-210-146-229.ngrok-free.app/v1/lucopay/payment-callback?OrderTrackingId=${trackingId}`);
+  //       const result = await response.json();
+
+  //       if (!response.ok) {
+  //         throw new Error(result.detail || 'Failed to fetch payment status.');
+  //       }
+
+  //       let status: 'success' | 'failed' | 'pending' | null = null;
+  //       if (result.status_class === 'status-success') {
+  //         status = 'success';
+  //       } else if (result.status_class === 'status-failed') {
+  //         status = 'failed';
+  //       } else {
+  //         status = 'pending';
+  //       }
+        
+  //       setDialogState({
+  //         isOpen: true,
+  //         status,
+  //         title: result.title,
+  //         message: result.message,
+  //       });
+
+  //     } catch (err: unknown) {
+  //       let errorMessage = 'An error occurred while checking payment status.';
+  //       if (err instanceof Error) {
+  //         errorMessage = err.message;
+  //       }
+  //       setDialogState({
+  //         isOpen: true,
+  //         status: 'failed',
+  //         title: 'Error Checking Status',
+  //         message: errorMessage,
+  //       });
+  //     } finally {
+  //       // Clean up URL params after reading them
+  //       searchParams.delete('OrderTrackingId');
+  //       searchParams.delete('OrderMerchantReference'); // Pesapal also sends this
+  //       setSearchParams(searchParams);
+  //     }
+  //   };
+
+  //   if (orderTrackingId) {
+  //     fetchPaymentStatus(orderTrackingId);
+  //   }
+  // }, [searchParams, setSearchParams]);
+
   useEffect(() => {
     const orderTrackingId = searchParams.get('OrderTrackingId');
-
+  
     const fetchPaymentStatus = async (trackingId: string) => {
       try {
-        const response = await fetch(`https://c2ff-41-210-147-68.ngrok-free.app/v1/lucopay/payment-callback?OrderTrackingId=${trackingId}`);
+        const response = await fetch(
+          `https://2477-41-210-146-229.ngrok-free.app/v1/lucopay/payment-callback?OrderTrackingId=${trackingId}`,
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+          }
+        );
         const result = await response.json();
-
+  
         if (!response.ok) {
-          throw new Error(result.detail || 'Failed to fetch payment status.');
+          throw new Error(result.message || `HTTP Error: ${response.status}`);
         }
-
-        let status: 'success' | 'failed' | 'pending' | null = null;
-        if (result.status_class === 'status-success') {
-          status = 'success';
-        } else if (result.status_class === 'status-failed') {
-          status = 'failed';
-        } else {
-          status = 'pending';
-        }
-        
+  
         setDialogState({
           isOpen: true,
-          status,
+          status: result.status as 'success' | 'failed' | 'pending',
           title: result.title,
           message: result.message,
         });
-
       } catch (err: unknown) {
         let errorMessage = 'An error occurred while checking payment status.';
         if (err instanceof Error) {
@@ -86,13 +137,12 @@ const Topup = () => {
           message: errorMessage,
         });
       } finally {
-        // Clean up URL params after reading them
         searchParams.delete('OrderTrackingId');
-        searchParams.delete('OrderMerchantReference'); // Pesapal also sends this
+        searchParams.delete('OrderMerchantReference');
         setSearchParams(searchParams);
       }
     };
-
+  
     if (orderTrackingId) {
       fetchPaymentStatus(orderTrackingId);
     }
@@ -129,7 +179,7 @@ const Topup = () => {
     };
 
     try {
-        const response = await fetch('https://c2ff-41-210-147-68.ngrok-free.app/v1/lucopay/initiate-payment', {
+        const response = await fetch('https://2477-41-210-146-229.ngrok-free.app/v1/lucopay/initiate-payment', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

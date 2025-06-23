@@ -17,6 +17,8 @@ import SignIn from "./pages/AuthPages/SignIn";
 import Schedules from "./pages/Schedules/Schedules";
 import Tutorials from "./pages/Tutorials/Tutorials";
 import Topup from "./pages/Home/Topup";
+import Backup from "./pages/Home/Backup";
+import Restore from "./pages/Home/Restore";
 
 // import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react'
 
@@ -49,6 +51,8 @@ export default function App() {
               <Route path="/compose" element={<ComposeMessages />} />
               <Route path="/billings" element={<Billings />} />
               <Route path="/schedules" element={<Schedules />} />
+              <Route path="/backup" element={<Backup />} />
+              <Route path="/restore" element={<Restore />} />
               <Route path="/developer" element={<Developer />} />
               <Route path="/docs" element={<Docs />} />
               <Route path="/tutorials" element={<Tutorials />} />
