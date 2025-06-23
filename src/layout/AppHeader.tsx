@@ -14,7 +14,7 @@ import LucoBot from "../components/Lucobot/LucoBot"; // Import LucoBot component
 
 const AppHeader: React.FC = () => {
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLucoBotOpen, setIsLucoBotOpen] = useState(false); // State for LucoBot pop-up
 
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
@@ -33,8 +33,8 @@ const AppHeader: React.FC = () => {
     setApplicationMenuOpen(!isApplicationMenuOpen);
   };
 
-  const openModal = () => setIsModalOpen(true);
-  const closeModal = () => setIsModalOpen(false);
+  // const openModal = () => setIsModalOpen(true);
+  // const closeModal = () => setIsModalOpen(false);
 
   const toggleLucoBot = () => { // Function to toggle LucoBot pop-up
     setIsLucoBotOpen(!isLucoBotOpen);
@@ -154,7 +154,7 @@ const AppHeader: React.FC = () => {
               size="md"
               variant="primary"
               startIcon={<WalletMinimal className="size-5" />}
-              onClick={openModal}
+              // onClick={openModal}
             >
               Wallet:
               <span className="font-bold">
