@@ -5,7 +5,7 @@ import { useBalance } from "../context/BalanceContext";
 import { ThemeToggleButton } from "../utils/common/ThemeToggleButton";
 import Button from "../utils/ui/button/Button";
 import { BotIcon, WalletMinimal } from "lucide-react";
-import AddSmsCreditsModal from "../utils/ui/walletbutton/WalletButton";
+// import AddSmsCreditsModal from "../utils/ui/walletbutton/WalletButton";
 // import AddSmsCreditsModal from "./AddSmsCreditsModal";
 import { UserButton } from "@clerk/clerk-react";
 import LucoBot from "../components/Lucobot/LucoBot"; // Import LucoBot component
@@ -161,7 +161,7 @@ const AppHeader: React.FC = () => {
                 {isLoading ? "Loading..." : `UGX ${balance.toLocaleString()}`}
               </span>
             </Button>
-            <AddSmsCreditsModal isOpen={isModalOpen} onClose={closeModal} />
+            {/* <AddSmsCreditsModal isOpen={isModalOpen} onClose={closeModal} /> */}
           </div>
         </div>
         <div
