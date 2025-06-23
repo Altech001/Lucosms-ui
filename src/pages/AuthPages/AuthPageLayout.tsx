@@ -1,7 +1,7 @@
 import React from "react";
 import GridShape from "../../utils/common/GridShape";
 import { Link } from "react-router";
-import ThemeTogglerTwo from "../../utils/common/ThemeTogglerTwo";
+// import ThemeTogglerTwo from "../../utils/common/ThemeTogglerTwo";
 import { MessageCircleMoreIcon } from "lucide-react";
 
 export default function AuthLayout({
@@ -18,10 +18,12 @@ export default function AuthLayout({
             {/* <!-- ===== Common Grid Shape Start ===== --> */}
             <GridShape />
             <div className="flex flex-col items-center max-w-xs">
+              
               <Link to="/" className=" mb-4 flex">
                 <h2 className="text-title-md font-bold text-gray-100 dark:text-gray-400">
                   Luco SMS
                 </h2>
+
               <MessageCircleMoreIcon className="text-gray-100 dark:text-gray-400"/>
               </Link>
               <p className="text-center text-gray-400 dark:text-white/60">
@@ -30,9 +32,9 @@ export default function AuthLayout({
             </div>
           </div>
         </div>
-        <div className="fixed z-50 hidden bottom-6 right-6 sm:block">
+        {/* <div className="fixed z-50 hidden bottom-6 right-6 sm:block">
           <ThemeTogglerTwo />
-        </div>
+        </div> */}
       </div>
     </div>
   );
