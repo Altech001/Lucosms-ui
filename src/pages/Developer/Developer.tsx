@@ -340,12 +340,12 @@ export default function Developer() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-300">
           <div className="w-full max-w-md rounded-2xl bg-white dark:bg-zinc-900 p-8 shadow-2xl border border-gray-100/50 dark:border-zinc-800/50 transform transition-all duration-300 scale-100 hover:scale-[1.01]">
             <div className="flex items-center justify-between mb-6">
-              <h4 className="text-xl font-semibold text-red-600 dark:text-red-500 font-[Outfit]">
+              <h4 className="text-xl font-semibold text-red-600  dark:text-red-500 font-[Outfit]">
                 Delete API Key
               </h4>
               <button
                 onClick={() => setIsDeleteDialogOpen(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors duration-200"
+                className="text-gray-800  hover:text-gray-600  dark:hover:text-gray-200 transition-colors duration-200"
                 disabled={isLoading}
               >
                 <XIcon className="w-6 h-6" />
@@ -368,7 +368,7 @@ export default function Developer() {
                 variant="outline"
                 size="md"
                 onClick={handleDeleteKey}
-                className="px-6 py-3 bg-red-600 dark:bg-red-700 text-white rounded-lg hover:bg-red-700 dark:hover:bg-red-800 transition-all duration-300 font-[Outfit] font-medium"
+                className="px-6 py-3 bg-red-600 dark:bg-red-700 text-black rounded-lg hover:bg-red-700 dark:hover:bg-red-800 transition-all duration-300 font-[Outfit] font-medium"
                 disabled={isLoading}
               >
                 Delete Key
