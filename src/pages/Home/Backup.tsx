@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import PageBreadcrumb from "@/utils/common/PageBreadCrumb";
 import PageMeta from "@/utils/common/PageMeta";
 
-const API_BASE_URL = "http://127.0.0.1:8000/aws";
+const API_BASE_URL = "https://luco-service.onrender.com/aws";
 
 interface S3File {
   key: string;

@@ -51,7 +51,7 @@ const Topup = () => {
 
   //   const fetchPaymentStatus = async (trackingId: string) => {
   //     try {
-  //       const response = await fetch(`https://2477-41-210-146-229.ngrok-free.app/v1/lucopay/payment-callback?OrderTrackingId=${trackingId}`);
+  //       const response = await fetch(`https://luco-service.onrender.com/v1/lucopay/payment-callback?OrderTrackingId=${trackingId}`);
   //       const result = await response.json();
 
   //       if (!response.ok) {
@@ -104,7 +104,7 @@ const Topup = () => {
     const fetchPaymentStatus = async (trackingId: string) => {
       try {
         const response = await fetch(
-          `https://2477-41-210-146-229.ngrok-free.app/v1/lucopay/payment-callback?OrderTrackingId=${trackingId}`,
+          `https://luco-service.onrender.com/v1/lucopay/payment-callback?OrderTrackingId=${trackingId}`,
           {
             method: 'GET',
             headers: {
@@ -179,7 +179,7 @@ const Topup = () => {
     };
 
     try {
-        const response = await fetch('https://2477-41-210-146-229.ngrok-free.app/v1/lucopay/initiate-payment', {
+        const response = await fetch('https://luco-service.onrender.com/v1/lucopay/initiate-payment', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
