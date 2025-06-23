@@ -225,12 +225,12 @@ export default function Docs() {
                           animate={{ height: 'auto', opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
                           transition={{ duration: 0.3 }}
-                          className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-4 overflow-hidden"
+                          className="p-6 grid grid-cols- lg:grid-cols-2 gap-4 overflow-hidden"
                         >
                           {section.endpoints.map((endpoint, index) => (
                             <div
                               key={index}
-                              className="bg-white dark:bg-zinc-800 rounded-lg border border-gray-200 dark:border-zinc-700 p-4 shadow-sm"
+                              className="bg-white dark:bg-zinc-700 rounded-lg border border-gray-200 lg:w-[50em] sm:w-fit dark:border-zinc-700 p-4 shadow-sm"
                             >
                               <div className="flex items-center gap-3 mb-3">
                                 <span
@@ -246,7 +246,7 @@ export default function Docs() {
                                   {endpoint.path}
                                 </code>
                               </div>
-                              <p className="text-sm text-zinc-600 dark:text-zinc-300 font-[Outfit] mb-3">
+                              <p className="text-sm  text-zinc-600 dark:text-zinc-300 font-[Outfit] mb-3">
                                 {endpoint.description}
                               </p>
 
