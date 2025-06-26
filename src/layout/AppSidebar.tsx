@@ -46,7 +46,7 @@ const navItems: NavItem[] = [
     path: "/wchat",
     subItems: [
       { name: "LucoChat", path: "/wchat", pro: true },
-      { name: "Whatsapp Templates", path: "/templates", pro: true },
+      { name: "Send Bulk", path: "/wchat/sendbulk", pro: true },
     ],
   },
   {

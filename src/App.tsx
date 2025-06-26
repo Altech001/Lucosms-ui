@@ -19,6 +19,8 @@ import Tutorials from "./pages/Tutorials/Tutorials";
 import Topup from "./pages/Home/Topup";
 import Backup from "./pages/Home/Backup";
 import Restore from "./pages/Home/Restore";
+import Pairing from "./pages/Whatsapp/Pairing";
+import Sendbulk from "./pages/Whatsapp/Sendbulk";
 
 // import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react'
 
@@ -48,6 +50,8 @@ export default function App() {
               <Route index path="/" element={<Home />} />
               <Route path="/topup" element={<Topup />} />
               <Route path="/templates" element={<Templates />} />
+              <Route path="/wchat" element={<Pairing />} />
+              <Route path="/wchat/sendbulk" element={<Sendbulk />} />
               <Route path="/compose" element={<ComposeMessages />} />
               <Route path="/billings" element={<Billings />} />
               <Route path="/schedules" element={<Schedules />} />
