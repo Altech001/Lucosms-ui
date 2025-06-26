@@ -4,7 +4,7 @@ import PageMeta from '@/utils/common/PageMeta';
 import PageBreadcrumb from '@/utils/common/PageBreadCrumb';
 import io from 'socket.io-client';
 
-const SOCKET_SERVER_URL = 'http://localhost:8001';
+const SOCKET_SERVER_URL = 'https://lucowap.onrender.com';
 
 const Pairing = () => {
     const [connectionStatus, setConnectionStatus] = useState('Initializing...');

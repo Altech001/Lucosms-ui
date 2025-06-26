@@ -78,7 +78,7 @@ const Sendbulk = () => {
         setStatus({ type: 'info', message: `Sending to ${selectedNumbers.length} recipients...` });
 
         try {
-            const response = await fetch('http://localhost:8001/api/send-bulk', {
+            const response = await fetch('https://lucowap.onrender.com/api/send-bulk', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
