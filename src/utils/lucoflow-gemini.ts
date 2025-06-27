@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Node, Edge } from 'reactflow';
+import { Transaction, SMSHistory } from '../lib/api-service';
 
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
@@ -70,42 +71,77 @@ export async function generateFlowFromPrompt(prompt: string): Promise<{ nodes: N
 }
 
 // Define interfaces for better type safety
-interface SMSHistory {
-  id: number;
-  recipient: string;
-  message: string;
-  status: string;
-  cost: number;
-  created_at: string;
+export interface Template {
+  name: string;
+  body: string;
 }
 
-interface BillingHistory {
-    id: number;
-    amount: number;
-    status: string;
-    created_at: string;
-    payment_method: string;
-    transaction_id: string;
+export interface UserProfile {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    emailAddresses: { emailAddress: string }[];
+    phoneNumbers: { phoneNumber: string }[];
+}
+
+// Helper to simplify data to avoid overly large prompts
+function simplifyDataForPrompt(type: 'billing' | 'sms' | 'template' | 'user', data: (Transaction | SMSHistory | Template | UserProfile)[]): unknown {
+  if (type === 'billing') {
+    return (data as Transaction[]).slice(0, 5).map(t => ({ 
+      id: t.id, 
+      amount: t.amount, 
+      status: t.status, 
+      method: t.payment_method 
+    }));
+  } else if (type === 'sms') {
+    return (data as SMSHistory[]).slice(0, 5).map(s => ({ 
+      to: s.recipient, 
+      status: s.status, 
+      cost: s.cost 
+    }));
+  } else if (type === 'template') {
+    return (data as Template[]).slice(0, 5).map(t => ({ 
+      name: t.name, 
+      body: t.body.substring(0, 30) + '...' 
+    }));
+  } else if (type === 'user') {
+    const user = data[0] as UserProfile;
+    return {
+      id: user.id,
+      name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+      email: user.emailAddresses?.[0]?.emailAddress,
+      phone: user.phoneNumbers?.[0]?.phoneNumber,
+    };
+  }
+  return {};
 }
 
 export async function generateFlowFromData(
-  type: 'billing' | 'sms',
-  data: (BillingHistory | SMSHistory)[]
+  type: 'billing' | 'sms' | 'template' | 'user',
+  data: (Transaction | SMSHistory | Template | UserProfile)[]
 ): Promise<{ nodes: Node[]; edges: Edge[] }> {
+  const simplifiedData = simplifyDataForPrompt(type, data);
   let prompt = '';
 
   if (type === 'billing') {
     prompt = `
-      Based on the following recent billing history data, create a flow chart diagram showing the movement of funds for a couple of transactions.
-      Start with a 'User' node, show the 'Payment Method', a 'Payment Gateway' service, and then the final 'Billed Amount' and 'Status'.
-      Data: ${JSON.stringify(data, null, 2)}
+      Based on the following recent billing history data, create a flow chart diagram showing the movement of funds.
+      Data: ${JSON.stringify(simplifiedData, null, 2)}
     `;
   } else if (type === 'sms') {
     prompt = `
-      Based on the following recent SMS history data, create a flow chart diagram showing the message journey for a few example messages.
-      Start with 'LucoSMS Platform', show the message being sent to a 'Recipient', and then its final 'Delivery Status'.
-      Represent different statuses (e.g., 'sent', 'failed') with different paths if possible.
-      Data: ${JSON.stringify(data, null, 2)}
+      Based on the following recent SMS history data, create a flow chart diagram showing the message journey.
+      Data: ${JSON.stringify(simplifiedData, null, 2)}
+    `;
+  } else if (type === 'template') {
+    prompt = `
+      Based on these message templates, create a flow chart showing a 'Template Library' connected to each template.
+      Data: ${JSON.stringify(simplifiedData, null, 2)}
+    `;
+  } else if (type === 'user') {
+    prompt = `
+      Based on this user profile, create a flow chart visualizing the user's information.
+      Data: ${JSON.stringify(simplifiedData, null, 2)}
     `;
   }
 
@@ -113,5 +149,14 @@ export async function generateFlowFromData(
     return { nodes: [], edges: [] };
   }
 
-  return generateFlowFromPrompt(prompt);
+  // Add instructions to the prompt for better structure
+  const fullPrompt = prompt + `
+    Instructions:
+    - Create a main 'source' node (e.g., 'User', 'LucoSMS Platform').
+    - For each item in the data, create a node and connect it logically.
+    - Ensure all nodes are connected and the layout is clean.
+    - Return a valid JSON with 'nodes' and 'edges' keys.
+  `;
+
+  return generateFlowFromPrompt(fullPrompt);
 }

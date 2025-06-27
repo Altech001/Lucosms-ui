@@ -2,12 +2,10 @@ import { useMessage } from '@/context/MessageContext';
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-type CachedData = any; // Replace with specific type if known
-
-export const useMessageCache = () => {
+export const useMessageCache = <T,>() => {
   const { state, updateCache } = useMessage();
 
-  const getCachedData = (key: string): CachedData | null => {
+  const getCachedData = (key: string): T | null => {
     const cached = state.cache.get(key);
     if (!cached) return null;
 
@@ -16,10 +14,10 @@ export const useMessageCache = () => {
       return null;
     }
 
-    return cached.data;
+    return cached.data as T;
   };
 
-  const cacheData = (key: string, data: CachedData) => {
+  const cacheData = (key: string, data: T) => {
     updateCache(key, data);
   };
 

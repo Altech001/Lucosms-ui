@@ -22,6 +22,23 @@ export interface ApiLog {
 
 // const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL}`;
 
+export interface Transaction {
+  id: string;
+  amount: number;
+  status: string;
+  created_at: string;
+  payment_method: string;
+}
+
+export interface SMSHistory {
+  id: number;
+  recipient: string;
+  message: string;
+  status: string;
+  cost: number;
+  created_at: string;
+}
+
 export const apiService = {
   async generateApiKey(getToken: () => Promise<string | null>): Promise<ApiKeyResponse> {
     const token = await getToken();
@@ -101,4 +118,28 @@ export const apiService = {
 
     return response.json();
   },
+
+  async getTransactionHistory(getToken: () => Promise<string | null>, userId: string): Promise<Transaction[]> {
+    const token = await getToken();
+    if (!token) throw new Error("Authentication token not found");
+
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/user/api/v1/transaction_history?user_id=${userId}&skip=0&limit=10`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    });
+    if (!response.ok) throw new Error('Failed to fetch transaction history');
+    return response.json();
+  },
+
+  async getSmsHistory(getToken: () => Promise<string | null>): Promise<SMSHistory[]> {
+    const token = await getToken();
+    if (!token) throw new Error("Authentication token not found");
+
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/user/api/v1/sms_history`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    });
+    if (!response.ok) throw new Error('Failed to fetch SMS history');
+    return response.json();
+  }
 };

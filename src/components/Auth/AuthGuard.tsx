@@ -1,6 +1,7 @@
+
 import { useAuth } from "@clerk/clerk-react";
 import { Navigate, useLocation } from "react-router-dom";
-import { Infinity } from "ldrs/react";
+import { Infinity as InfinityLoader } from "ldrs/react";
 import "ldrs/react/Infinity.css";
 
 interface AuthGuardProps {
@@ -16,7 +17,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
     return (
       <div className="flex justify-center items-center h-screen">
       
-        <Infinity
+        <InfinityLoader
           size="105"
           stroke="4"
           strokeLength="0.15"

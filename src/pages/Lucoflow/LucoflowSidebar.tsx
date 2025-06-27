@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Bot, UploadCloud, Download, Settings, LoaderCircle } from 'lucide-react';
-
+import { Button } from '@/components/ui/button';
 // Re-usable ToggleSwitch component (inspired by Sidepanel.tsx)
 interface ToggleSwitchProps {
   id: string;
@@ -35,14 +35,24 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ id, label, checked, onChang
 );
 
 
-type GeneratingType = 'prompt' | 'billing' | 'sms' | null;
+import { FileText, UserCircle, SlidersHorizontal } from 'lucide-react';
+
+type GeneratingType = 'prompt' | 'billing' | 'sms' | 'template' | 'user' | null;
+
+interface LucoflowSettings {
+  animateEdges: boolean;
+  showEdgeLabels: boolean;
+  snapToGrid: boolean;
+}
 
 interface LucoflowSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onGenerateFromPrompt: (prompt: string) => void;
-  onGenerateFromData: (type: 'billing' | 'sms') => void;
+  onGenerateFromData: (type: 'billing' | 'sms' | 'template' | 'user') => void;
   generatingType: GeneratingType;
+  settings: LucoflowSettings;
+  onSettingsChange: (settings: LucoflowSettings) => void;
 }
 
 const LucoflowSidebar: React.FC<LucoflowSidebarProps> = ({ 
@@ -50,10 +60,14 @@ const LucoflowSidebar: React.FC<LucoflowSidebarProps> = ({
   onClose, 
   onGenerateFromPrompt, 
   onGenerateFromData,
-  generatingType 
+  generatingType,
+  settings,
+  onSettingsChange
 }) => {
   const [prompt, setPrompt] = useState('');
-  const [autoLayout, setAutoLayout] = useState(true);
+    const handleSettingChange = <K extends keyof LucoflowSettings>(key: K, value: LucoflowSettings[K]) => {
+    onSettingsChange({ ...settings, [key]: value });
+  };
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -117,8 +131,9 @@ const LucoflowSidebar: React.FC<LucoflowSidebarProps> = ({
                 placeholder="e.g., A user authentication flow with registration, login, and password reset."
                 className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:ring-2 focus:ring-blue-500 transition-colors"
               />
-              <button
+              <Button
                 type="button"
+
                 onClick={handleGenerateClick}
                 disabled={!!generatingType || !prompt.trim()}
                 className="mt-4 w-full px-4 py-3 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
@@ -131,7 +146,7 @@ const LucoflowSidebar: React.FC<LucoflowSidebarProps> = ({
                 ) : (
                   "Generate Flow"
                 )}
-              </button>
+              </Button>
             </div>
 
             {/* Settings Section */}
@@ -141,11 +156,25 @@ const LucoflowSidebar: React.FC<LucoflowSidebarProps> = ({
                 Settings
               </h3>
               <ToggleSwitch
-                id="auto-layout"
-                label="Auto-layout nodes"
-                checked={autoLayout}
-                onChange={setAutoLayout}
-                icon={Settings} // Placeholder icon
+                id="animate-edges"
+                label="Animate Edges"
+                checked={settings.animateEdges}
+                onChange={(val) => handleSettingChange('animateEdges', val)}
+                icon={SlidersHorizontal}
+              />
+               <ToggleSwitch
+                id="show-labels"
+                label="Show Edge Labels"
+                checked={settings.showEdgeLabels}
+                onChange={(val) => handleSettingChange('showEdgeLabels', val)}
+                icon={SlidersHorizontal}
+              />
+               <ToggleSwitch
+                id="snap-grid"
+                label="Snap to Grid"
+                checked={settings.snapToGrid}
+                onChange={(val) => handleSettingChange('snapToGrid', val)}
+                icon={SlidersHorizontal}
               />
             </div>
 
@@ -156,32 +185,62 @@ const LucoflowSidebar: React.FC<LucoflowSidebarProps> = ({
                 Automated Flows
               </h3>
               <div className="space-y-3 mt-2">
-                <button
+                <Button
                   type="button"
+                  variant="outline"
                   onClick={() => onGenerateFromData('billing')}
                   disabled={!!generatingType}
-                  className="w-full px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-2 rounded-lg text-sm font-semibold text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {generatingType === 'billing' ? (
                     <LoaderCircle size={16} className="animate-spin mr-2" />
                   ) : (
-                    <Download size={16} className="mr-2" /> // Placeholder icon
+                    <Download size={16} className="mr-2" />
                   )}
                   Visualize Billing
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="outline"
                   onClick={() => onGenerateFromData('sms')}
                   disabled={!!generatingType}
-                  className="w-full px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-2 rounded-lg text-sm font-semibold dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {generatingType === 'sms' ? (
                     <LoaderCircle size={16} className="animate-spin mr-2" />
                   ) : (
-                    <UploadCloud size={16} className="mr-2" /> // Placeholder icon
+                    <UploadCloud size={16} className="mr-2" />
                   )}
                   Visualize SMS Journey
-                </button>
+                </Button>
+                 <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onGenerateFromData('template')}
+                  disabled={!!generatingType}
+                  className="w-full px-4 py-2 rounded-lg text-sm font-semibold text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {generatingType === 'template' ? (
+                    <LoaderCircle size={16} className="animate-spin mr-2" />
+                  ) : (
+                    <FileText size={16} className="mr-2" />
+                  )}
+                  Visualize Templates
+                </Button>
+                 <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onGenerateFromData('user')}
+                  disabled={!!generatingType}
+                  className="w-full px-4 py-2  rounded-lg text-sm font-semibold dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {generatingType === 'user' ? (
+                    <LoaderCircle size={16} className="animate-spin mr-2" />
+                  ) : (
+                    <UserCircle size={16} className="mr-2" />
+                  )}
+                  Visualize User Profile
+                </Button>
               </div>
             </div>
           </div>

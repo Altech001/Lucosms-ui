@@ -2,7 +2,7 @@ import * as React from 'react';
 
 export interface CachedMessage {
   timestamp: number;
-  data: any; // Replace with specific type if known, e.g., { id: string; content: string }
+  data: unknown;
 }
 
 export interface MessageState {
@@ -12,7 +12,7 @@ export interface MessageState {
 
 export interface MessageContextType {
   state: MessageState;
-  updateCache: (key: string, data: any) => void;
+  updateCache: (key: string, data: unknown) => void;
 }
 
 const MessageContext = React.createContext<MessageContextType | undefined>(undefined);
@@ -23,7 +23,7 @@ export const MessageProvider: React.FC<{ children: React.ReactNode }> = ({ child
     balance: 0  // Initialize balance
   });
 
-  const updateCache = (key: string, data: any) => {
+  const updateCache = (key: string, data: unknown) => {
     setState((prev) => ({
       ...prev,
       cache: new Map(prev.cache).set(key, { timestamp: Date.now(), data }),
