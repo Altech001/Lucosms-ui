@@ -55,6 +55,11 @@ const navItems: NavItem[] = [
     path: "/templates",
   },
   {
+    name: "Lucoflow",
+    icon: <SquareDashedKanban />,
+    path: "/lucoflow",
+  },
+  {
     name: "Schedules",
     icon: <TimerIcon />,
     path: "/schedules",

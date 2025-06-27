@@ -21,6 +21,7 @@ import Backup from "./pages/Home/Backup";
 import Restore from "./pages/Home/Restore";
 import Pairing from "./pages/Whatsapp/Pairing";
 import Sendbulk from "./pages/Whatsapp/Sendbulk";
+import LucoflowPage from "./pages/Lucoflow/Lucoflow";
 
 // import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react'
 
@@ -60,6 +61,7 @@ export default function App() {
               <Route path="/developer" element={<Developer />} />
               <Route path="/docs" element={<Docs />} />
               <Route path="/tutorials" element={<Tutorials />} />
+              <Route path="/lucoflow" element={<LucoflowPage />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
