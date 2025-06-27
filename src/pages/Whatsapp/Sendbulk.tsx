@@ -166,30 +166,10 @@ const Sendbulk = () => {
 
       <div className="w-full bg-transparent sm:p-4 lg:p-5 flex flex-col min-h-screen">
         <div className="relative">
-          <button
-            onClick={() => setIsPanelOpen(true)}
-            className="flex items-center gap-2 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
-
           <SidePanel
             isOpen={isPanelOpen}
             onClose={() => setIsPanelOpen(false)}
-            title="Settings"
-          >
-            <div className="space-y-4 p-4">
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 dark:text-white">
-                  Panel Content
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Add your settings or other content here.
-                </p>
-              </div>
-              {/* Add more content as needed */}
-            </div>
-          </SidePanel>
+          />
         </div>
         <div className=" w-full flex-grow grid grid-cols-12 gap-2 h-full">
           {/* Left Panel: Contacts */}
@@ -292,7 +272,8 @@ const Sendbulk = () => {
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-lg">New Message</h3>
               <button
-                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                // onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                onClick={() => setIsPanelOpen(true)}
                 className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                 title="Toggle Bot Settings"
               >
