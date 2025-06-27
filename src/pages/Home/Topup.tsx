@@ -76,7 +76,7 @@ const Topup = () => {
         if (result.status === 'success' && result.payment_status_description === 'Completed' && user?.id) {
           try {
             const topupResponse = await fetch(
-              `https://lucosms-api.onrender.com/v1/admin/wallets/${user.id}/topup`,
+              `https://lucosms-api.onrender.com/v1/admin/userwallet/${user.id}/topup`,
               {
                 method: 'POST',
                 headers: {
@@ -89,6 +89,7 @@ const Topup = () => {
 
             if (!topupResponse.ok) {
               throw new Error(`Failed to top up wallet: ${topupResponse.status}`);
+              
             }
 
             console.log(`Wallet topped up successfully for user ${user.id}, amount: ${result.amount}`);
