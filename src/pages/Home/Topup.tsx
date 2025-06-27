@@ -22,6 +22,7 @@ const Topup = () => {
   });
   const [isDownloading, setIsDownloading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isTestingTopup, setIsTestingTopup] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dialogState, setDialogState] = useState({
     isOpen: false,
@@ -238,6 +239,51 @@ const Topup = () => {
     }
   };
 
+  const handleTestTopup = async () => {
+    if (!user?.id) {
+      alert("You must be logged in to test the top-up.");
+      return;
+    }
+    setIsTestingTopup(true);
+    try {
+      const testAmount = 500;
+      const response = await fetch(
+        `https://lucosms-api.onrender.com/v1/admin/wallets/${user.id}/topup`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ amount: testAmount }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.message || `Test failed with status: ${response.status}`
+        );
+      }
+
+      alert(
+        `Test successful! Wallet should be updated. Response: ${JSON.stringify(
+          result
+        )}`
+      );
+    } catch (error: unknown) {
+      console.error("Test top-up error:", error);
+      let errorMessage = "An unknown error occurred.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      alert(`Test failed: ${errorMessage}`);
+    } finally {
+      setIsTestingTopup(false);
+    }
+  };
+
   const handleDownload = async () => {
     const element = orderSummaryRef.current;
     if (!element || isDownloading) {
@@ -430,6 +476,22 @@ const Topup = () => {
                             Proceed to Payment{" "}
                             <ArrowRight className="ml-2 h-5 w-5" />
                           </>
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full mt-2"
+                        onClick={handleTestTopup}
+                        disabled={isTestingTopup || isProcessing}
+                      >
+                        {isTestingTopup ? (
+                          <>
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                            Testing...
+                          </>
+                        ) : (
+                          "Test Top-up API (500 UGX)"
                         )}
                       </Button>
                       {error && (
