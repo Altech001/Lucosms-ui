@@ -105,7 +105,9 @@ const Topup = () => {
                 );
               } else {
                 alert(
-                  `DEBUG: Top-up in failure block FAILED. Message: ${topupResult.message}`
+                  `DEBUG: Top-up in failure block FAILED. Full Response: ${JSON.stringify(
+                    topupResult
+                  )}`
                 );
               }
             } catch (e: unknown) {
