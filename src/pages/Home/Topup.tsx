@@ -62,6 +62,7 @@ const Topup = () => {
           }
         );
         const result = await response.json();
+        console.log("--- PAYMENT CALLBACK RESPONSE ---", JSON.stringify(result, null, 2));
 
         if (!response.ok) {
           throw new Error(result.message || `HTTP Error: ${response.status}`);
@@ -74,23 +75,70 @@ const Topup = () => {
         if (!isSuccess) {
           setDialogState({
             isOpen: true,
-            status: result.status as "success" | "failed" | "pending",
-            title: result.title,
-            message: result.message,
+            status: "failed",
+            title: "Debug: Payment Failed",
+            message: `The payment failed or was not marked as 'Completed'. As requested, attempting a debug top-up with a nominal amount.`,
           });
+
+          // As requested, attempt a top-up even on failure for debugging.
+          if (user?.id) {
+            try {
+              const debugAmount = 1; // Use a nominal amount for the test.
+              console.log(
+                `[Debug-Fail] Forcing top-up for user ${user.id} with amount ${debugAmount}`
+              );
+              const topupResponse = await fetch(
+                `https://lucosms-api.onrender.com/v1/admin/userwallet/${user.id}/topup`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                  },
+                  body: JSON.stringify({ amount: debugAmount }),
+                }
+              );
+              const topupResult = await topupResponse.json();
+              if (topupResponse.ok) {
+                alert(
+                  `DEBUG (from failure block): Top-up SUCCEEDED. Response: ${JSON.stringify(
+                    topupResult
+                  )}`
+                );
+              } else {
+                alert(
+                  `DEBUG (from failure block): Top-up FAILED. Full Response: ${JSON.stringify(
+                    topupResult
+                  )}`
+                );
+              }
+            } catch (e: unknown) {
+              let errorMessage = "An unknown exception occurred.";
+              if (e instanceof Error) {
+                errorMessage = e.message;
+              }
+              alert(
+                `DEBUG (from failure block): Top-up threw an EXCEPTION: ${errorMessage}`
+              );
+            }
+          } else {
+            alert(
+              "DEBUG (from failure block): Cannot attempt top-up because user ID is missing."
+            );
+          }
           return; // Stop execution
         }
 
         // 3. Validate the amount from the response
-        const topupAmount = result.amount;
-        if (typeof topupAmount !== 'number' || topupAmount <= 0) {
-            setDialogState({
-                isOpen: true,
-                status: "failed",
-                title: "Top-up Failed",
-                message: `Your payment was successful, but the amount received from the payment service was invalid. Please contact support. (Received Amount: ${topupAmount})`,
-            });
-            return; // Stop execution
+        const topupAmount = parseFloat(result.amount);
+        if (isNaN(topupAmount) || topupAmount <= 0) {
+          setDialogState({
+            isOpen: true,
+            status: "failed",
+            title: "Top-up Failed",
+            message: `Your payment was successful, but the top-up amount received from the payment service was invalid. Please contact support. (Received: ${result.amount})`,
+          });
+          return; // Stop execution
         }
 
         // 4. If payment is successful, show "Top-up in progress" dialog
