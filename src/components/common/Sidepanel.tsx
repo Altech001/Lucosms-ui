@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import QRCode from "qrcode";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -12,6 +13,7 @@ import {
   Code,
   User,
   MessageCircle,
+  QrCode,
 } from "lucide-react";
 
 interface SidePanelProps {
@@ -81,6 +83,10 @@ const SidePanel: React.FC<SidePanelProps> = ({ isOpen, onClose }) => {
     error?: string;
   } | null>(null);
 
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [isGeneratingQR, setIsGeneratingQR] = useState(false);
+  const [qrError, setQrError] = useState<string | null>(null);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -97,6 +103,8 @@ const SidePanel: React.FC<SidePanelProps> = ({ isOpen, onClose }) => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isOpen, onClose]);
+
+
 
   const handleGenerateCode = async () => {
     if (!phoneNumber || phoneNumber.replace(/[^0-9]/g, "").length < 11) {
@@ -125,6 +133,36 @@ const SidePanel: React.FC<SidePanelProps> = ({ isOpen, onClose }) => {
       setPairingResult({ error: "Failed to connect to the service." });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleGenerateQR = async () => {
+    setIsGeneratingQR(true);
+    setQrCode(null);
+    setQrError(null);
+    try {
+      const response = await fetch('http://localhost:8000/qr');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.qr) {
+          const imageUrl = await QRCode.toDataURL(data.qr);
+          setQrCode(imageUrl);
+        } else {
+          setQrError('QR code data not found in response.');
+        }
+      } else {
+        try {
+            const errorData = await response.json();
+            setQrError(errorData.code || 'Failed to generate QR code.');
+        } catch {
+            setQrError('Failed to generate QR code.');
+        }
+      }
+    } catch (error) {
+      console.error('QR code generation error:', error);
+      setQrError('Failed to connect to the service.');
+    } finally {
+      setIsGeneratingQR(false);
     }
   };
 
@@ -338,6 +376,39 @@ const SidePanel: React.FC<SidePanelProps> = ({ isOpen, onClose }) => {
                       </p>
                     )}
                   </div>
+                )}
+              </div>
+
+              {/* QR Code Generation */}
+              <div className="pt-6 space-y-2">
+                <label
+                  htmlFor="qr-code"
+                  className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  <QrCode size={16} className="mr-2" />
+                  WhatsApp QR Code
+                </label>
+                <button
+                  type="button"
+                  onClick={handleGenerateQR}
+                  disabled={isGeneratingQR}
+                  className="w-full px-4 py-2 rounded-md text-sm bg-green-600 text-white hover:bg-green-700 transition-colors disabled:bg-gray-400 flex items-center justify-center"
+                >
+                  {isGeneratingQR ? (
+                    <LoaderCircle size={18} className="animate-spin" />
+                  ) : (
+                    "Generate QR Code"
+                  )}
+                </button>
+                {qrCode && (
+                  <div className="mt-4 p-3 rounded-lg bg-gray-100 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 flex justify-center">
+                    <img src={qrCode} alt="WhatsApp QR Code" />
+                  </div>
+                )}
+                {qrError && (
+                  <p className="text-sm text-red-500 dark:text-red-400">
+                    {qrError}
+                  </p>
                 )}
               </div>
 
