@@ -46,7 +46,7 @@ function Tutorials() {
         title: "Creating Message Templates",
         description:
           "Learn how to create and manage message templates for efficient communication.",
-        videoUrl: "https://example.com/video2.mp4",
+        videoUrl: "https://files.catbox.moe/zt2g9p",
         thumbnail: "/images/chat/chat.jpg",
         rating: 0,
         isAIGenerated: false,
@@ -56,7 +56,7 @@ function Tutorials() {
         title: "API Integration Guide",
         description:
           "Step-by-step guide to integrating LucoSMS API into your applications.",
-        videoUrl: "https://example.com/video3.mp4",
+        videoUrl: "https://files.catbox.moe/ywc7ci",
         thumbnail: "/images/grid-image/image-05.png",
         rating: 0,
         isAIGenerated: false,
