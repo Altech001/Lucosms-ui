@@ -35,12 +35,6 @@ const minimapStyle = {
   borderColor: 'var(--color-gray-200)',
 };
 
-const controlStyles = {
-  backgroundColor: 'var(--color-brand-50)',
-  color: 'var(--color-brand-600)',
-  border: 'none',
-};
-
 const SidePanel: React.FC = () => {
   const [nodes, , onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -52,6 +46,18 @@ const SidePanel: React.FC = () => {
 
   return (
     <div style={{ width: '100%', height: '100%' }} className="bg-gray-50 dark:bg-gray-900">
+      <style>
+        {`
+          .react-flow__controls-button {
+            background-color: var(--color-brand-50);
+            color: var(--color-brand-600);
+            border: none;
+          }
+          .react-flow__controls-button:hover {
+            background-color: var(--color-brand-100);
+          }
+        `}
+      </style>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -63,7 +69,7 @@ const SidePanel: React.FC = () => {
           backgroundColor: 'var(--color-gray-50)',
         }}
       >
-        <Controls style={controlStyles} />
+        <Controls />
         <MiniMap style={minimapStyle} zoomable pannable />
         <Background color="var(--color-brand-200)" gap={16} />
       </ReactFlow>
