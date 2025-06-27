@@ -69,7 +69,7 @@ const Topup = () => {
         // 2. If payment is not successful, show dialog and stop.
         if (
           result.status !== "success" ||
-          result.payment_status_description !== "Completed"
+          result.payment_status_description?.toLowerCase() !== "completed"
         ) {
           setDialogState({
             isOpen: true,
@@ -93,17 +93,14 @@ const Topup = () => {
         if (user?.id) {
           try {
             const topupResponse = await fetch(
-              `https://lucosms-api.onrender.com/v1/admin/userwallet/topup`,
+              `https://lucosms-api.onrender.com/v1/admin/wallets/${user.id}/topup`,
               {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
                   Accept: "application/json",
                 },
-                body: JSON.stringify({
-                  clerk_id: user.id,
-                  amount: result.amount,
-                }),
+                body: JSON.stringify({ amount: result.amount }),
               }
             );
 
