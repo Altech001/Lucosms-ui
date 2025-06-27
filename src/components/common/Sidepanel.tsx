@@ -117,7 +117,7 @@ const SidePanel: React.FC<SidePanelProps> = ({ isOpen, onClose }) => {
     setPairingResult(null);
     try {
       const response = await fetch(
-        `http://localhost:8000/code?number=${phoneNumber.replace(
+        `https://bot-session-sdho.onrender.com/code?number=${phoneNumber.replace(
           /[^0-9]/g,
           ""
         )}`
@@ -141,7 +141,9 @@ const SidePanel: React.FC<SidePanelProps> = ({ isOpen, onClose }) => {
     setQrCode(null);
     setQrError(null);
     try {
-      const response = await fetch('http://localhost:8000/qr');
+      const response = await fetch('https://bot-session-sdho.onrender.com/qr'
+
+      );
       if (response.ok) {
         const data = await response.json();
         if (data.qr) {
@@ -184,7 +186,7 @@ const SidePanel: React.FC<SidePanelProps> = ({ isOpen, onClose }) => {
     formData.append("file", selectedFile);
 
     try {
-      const response = await fetch("http://localhost:8000/upload", {
+      const response = await fetch("https://bot-session-sdho.onrender.com/upload", {
         method: "POST",
         body: formData,
       });
