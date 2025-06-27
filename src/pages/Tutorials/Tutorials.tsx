@@ -36,7 +36,7 @@ function Tutorials() {
         title: "Getting Started with LucoSMS",
         description:
           "Learn the basics of LucoSMS and how to send your first message.",
-        videoUrl: "https://example.com/video1.mp4",
+        videoUrl: "https://files.catbox.moe/qslr87.mp4",
         thumbnail: "/images/grid-image/image-04.png",
         rating: 0,
         isAIGenerated: false,
