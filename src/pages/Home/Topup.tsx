@@ -49,6 +49,7 @@ const Topup = () => {
 
     const fetchPaymentStatus = async (trackingId: string) => {
       try {
+        // 1. Fetch payment status
         const response = await fetch(
           `https://luco-service.onrender.com/v1/lucopay/payment-callback?OrderTrackingId=${trackingId}`,
           {
@@ -65,52 +66,92 @@ const Topup = () => {
           throw new Error(result.message || `HTTP Error: ${response.status}`);
         }
 
+        // 2. If payment is not successful, show dialog and stop.
+        if (
+          result.status !== "success" ||
+          result.payment_status_description !== "Completed"
+        ) {
+          setDialogState({
+            isOpen: true,
+            status: result.status as "success" | "failed" | "pending",
+            title: result.title,
+            message: result.message,
+          });
+          return; // Stop execution
+        }
+
+        // 3. If payment is successful, show "Top-up in progress" dialog
         setDialogState({
           isOpen: true,
-          status: result.status as "success" | "failed" | "pending",
-          title: result.title,
-          message: result.message,
+          status: "pending",
+          title: "Processing Top-up",
+          message:
+            "Your payment was successful. We are now topping up your wallet. Please wait...",
         });
 
-        // If payment is completed, trigger wallet top-up
-        if (
-          result.status === "success" &&
-          result.payment_status_description === "Completed" &&
-          user?.id
-        ) {
+        // 4. Perform the top-up
+        if (user?.id) {
           try {
             const topupResponse = await fetch(
-              `https://lucosms-api.onrender.com/v1/admin/userwallet/${user.id}/topup`,
+              `https://lucosms-api.onrender.com/v1/admin/userwallet/topup`,
               {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
                   Accept: "application/json",
                 },
-                body: JSON.stringify({ amount: result.amount }),
+                body: JSON.stringify({
+                  clerk_id: user.id,
+                  amount: result.amount,
+                }),
               }
             );
-            const topupResult = await topupResponse.json();
-            console.log("Top-up response:", topupResponse.status, topupResult);
 
             if (!topupResponse.ok) {
+              const topupResult = await topupResponse.json().catch(() => ({
+                message: "Failed to parse error response.",
+              }));
               throw new Error(
-                `Failed to top up wallet: ${topupResponse.status} - ${
-                  topupResult.message || "Unknown error"
-                }`
+                topupResult.message ||
+                  `Failed to top up wallet. Status: ${topupResponse.status}`
               );
             }
 
+            await topupResponse.json();
+
+            // 5. Show success dialog
+            setDialogState({
+              isOpen: true,
+              status: "success",
+              title: "Top-up Successful",
+              message: `Your wallet has been successfully topped up with UGX ${result.amount}.`,
+            });
             console.log(
               `Wallet topped up successfully for user ${user.id}, amount: ${result.amount}`
             );
-          } catch (topupError) {
+          } catch (topupError: unknown) {
             console.error("Wallet top-up error:", topupError);
-            setDialogState((prev) => ({
-              ...prev,
-              message: `${prev.message}\nNote: Wallet update failed. Please contact support.`,
-            }));
+            let topupErrorMessage = "An unknown error occurred during top-up.";
+            if (topupError instanceof Error) {
+              topupErrorMessage = topupError.message;
+            }
+            // 6. Show failure dialog
+            setDialogState({
+              isOpen: true,
+              status: "failed",
+              title: "Top-up Failed",
+              message: `Your payment was successful, but we failed to top up your wallet. Please contact support. Error: ${topupErrorMessage}`,
+            });
           }
+        } else {
+          // This case should ideally not happen if a user is logged in and initiates payment
+          setDialogState({
+            isOpen: true,
+            status: "failed",
+            title: "Top-up Failed",
+            message:
+              "Your payment was successful, but we could not identify your user account to top up the wallet. Please contact support.",
+          });
         }
       } catch (err: unknown) {
         let errorMessage = "An error occurred while checking payment status.";
@@ -124,6 +165,7 @@ const Topup = () => {
           message: errorMessage,
         });
       } finally {
+        // Clean up search params
         searchParams.delete("OrderTrackingId");
         searchParams.delete("OrderMerchantReference");
         setSearchParams(searchParams);
