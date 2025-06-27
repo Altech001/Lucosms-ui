@@ -38,7 +38,7 @@ const Topup = () => {
     if (user) {
       setFormData((prevData) => ({
         ...prevData,
-        name: user.id || '',
+        name: user.fullName || '',
         email: user.primaryEmailAddress?.emailAddress || '',
       }));
     }
