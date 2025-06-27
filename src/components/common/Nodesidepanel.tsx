@@ -36,11 +36,9 @@ const minimapStyle = {
 };
 
 const controlStyles = {
-  button: {
-    backgroundColor: 'var(--color-brand-50)',
-    color: 'var(--color-brand-600)',
-    border: 'none',
-  },
+  backgroundColor: 'var(--color-brand-50)',
+  color: 'var(--color-brand-600)',
+  border: 'none',
 };
 
 const SidePanel: React.FC = () => {
