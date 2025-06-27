@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import ReactFlow, {
   Controls,
@@ -71,6 +71,7 @@ const LucoflowPage: React.FC = () => {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [generatingType, setGeneratingType] = useState<GeneratingType>(null);
+  const edgeLabelsRef = useRef<Map<string, React.ReactNode>>(new Map());
   const [settings, setSettings] = useState<LucoflowSettings>({
     animateEdges: true,
     showEdgeLabels: false,
@@ -92,6 +93,13 @@ const LucoflowPage: React.FC = () => {
   }, [setNodes]);
 
   const processFlowData = useCallback((newNodes: ReactFlowNode[], newEdges: Edge[]) => {
+    edgeLabelsRef.current.clear();
+    newEdges.forEach(edge => {
+      if (edge.label) {
+        edgeLabelsRef.current.set(edge.id, edge.label);
+      }
+    });
+
     const typedNodes: ReactFlowNode[] = newNodes.map((node) => ({
       ...node,
       type: 'custom',
@@ -135,7 +143,7 @@ const LucoflowPage: React.FC = () => {
       eds.map((edge) => ({
         ...edge,
         animated: settings.animateEdges,
-        label: settings.showEdgeLabels ? edge.label : undefined,
+        label: settings.showEdgeLabels ? edgeLabelsRef.current.get(edge.id) : undefined,
       }))
     );
   }, [settings.animateEdges, settings.showEdgeLabels, setEdges]);
