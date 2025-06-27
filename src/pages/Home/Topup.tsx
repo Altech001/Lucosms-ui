@@ -62,6 +62,7 @@ const Topup = () => {
           }
         );
         const result = await response.json();
+        console.log("[Debug] Payment status result:", result);
 
         if (!response.ok) {
           throw new Error(result.message || `HTTP Error: ${response.status}`);
@@ -75,9 +76,54 @@ const Topup = () => {
           setDialogState({
             isOpen: true,
             status: result.status as "success" | "failed" | "pending",
-            title: result.title,
-            message: result.message,
+            title: `Debug: ${result.title}`,
+            message: `${result.message}\n\nAttempting a debug top-up as requested.`,
           });
+
+          // Debug: Attempting top-up even on failure, as requested by the user.
+          if (user?.id) {
+            try {
+              console.log("[Debug-Fail] User ID:", user.id);
+              console.log("[Debug-Fail] Amount:", result.amount);
+              const topupResponse = await fetch(
+                `https://lucosms-api.onrender.com/v1/admin/userwallet/${user.id}/topup`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                  },
+                  body: JSON.stringify({ amount: result.amount || 0 }), // Use 0 if amount is missing
+                }
+              );
+              const topupResult = await topupResponse.json();
+              if (topupResponse.ok) {
+                alert(
+                  `DEBUG: Top-up in failure block SUCCEEDED. Response: ${JSON.stringify(
+                    topupResult
+                  )}`
+                );
+              } else {
+                alert(
+                  `DEBUG: Top-up in failure block FAILED. Message: ${topupResult.message}`
+                );
+              }
+            } catch (e: unknown) {
+              if (e instanceof Error) {
+                alert(
+                  `DEBUG: Top-up in failure block threw an EXCEPTION: ${e.message}`
+                );
+              } else {
+                alert(
+                  "DEBUG: Top-up in failure block threw an unknown exception."
+                );
+              }
+            }
+          } else {
+            alert(
+              "DEBUG: Cannot attempt top-up in failure block because user ID is missing."
+            );
+          }
           return; // Stop execution
         }
 
@@ -91,6 +137,8 @@ const Topup = () => {
         });
 
         // 4. Perform the top-up
+        console.log("[Debug] User ID for top-up:", user?.id);
+        console.log("[Debug] Amount for top-up:", result.amount);
         if (user?.id) {
           try {
             const topupResponse = await fetch(
