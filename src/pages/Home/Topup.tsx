@@ -92,6 +92,7 @@ const Topup = () => {
             );
             const topupResult = await topupResponse.json();
             console.log("Top-up response:", topupResponse.status, topupResult);
+
             if (!topupResponse.ok) {
               throw new Error(
                 `Failed to top up wallet: ${topupResponse.status} - ${
@@ -99,12 +100,6 @@ const Topup = () => {
                 }`
               );
             }
-
-            // if (!topupResponse.ok) {
-            //   throw new Error(
-            //     `Failed to top up wallet: ${topupResponse.status}`
-            //   );
-            // }
 
             console.log(
               `Wallet topped up successfully for user ${user.id}, amount: ${result.amount}`
