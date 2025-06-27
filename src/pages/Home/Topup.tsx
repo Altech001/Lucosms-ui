@@ -94,7 +94,7 @@ const Topup = () => {
         if (user?.id) {
           try {
             const topupResponse = await fetch(
-              `https://lucosms-api.onrender.com/v1/admin/wallets/${user.id}/topup`,
+              `https://lucosms-api.onrender.com/v1/admin/userwallet/${user.id}/topup`,
               {
                 method: "POST",
                 headers: {
@@ -248,7 +248,7 @@ const Topup = () => {
     try {
       const testAmount = 500;
       const response = await fetch(
-        `https://lucosms-api.onrender.com/v1/admin/wallets/${user.id}/topup`,
+        `https://lucosms-api.onrender.com/v1/admin/userwallet/${user.id}/topup`,
         {
           method: "POST",
           headers: {
