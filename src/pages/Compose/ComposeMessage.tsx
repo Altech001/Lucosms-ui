@@ -1,6 +1,5 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable react-hooks/rules-of-hooks */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router";
@@ -139,13 +138,14 @@ export default function ComposeMessages() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [showMagicModal, setShowMagicModal] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { getToken } = useAuth();
 
 
-  const sendSMS = async (recipients: string[], message: string) => {
+  const sendSMS = async (recipients: string[], message: string, getToken: () => Promise<string | null>) => {
   try {
     const token = await getToken();
     const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/send_sms`, {
@@ -247,10 +247,12 @@ export default function ComposeMessages() {
     }
 
     const timestamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    setIsSending(true);
     try {
       const responseData = await sendSMS(
         selectedContacts.map((contact) => contact.phoneNumber),
-        newMessage
+        newMessage,
+        getToken
       );
       const updatedMessages = [
         { content: newMessage, timestamp, recipientCount: selectedContacts.length, recipients: selectedContacts },
@@ -274,6 +276,8 @@ export default function ComposeMessages() {
 
     } catch (error) {
       setAlert({ variant: "error", title: "Error", message: error instanceof Error ? error.message : "Failed to send message." });
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -817,13 +821,22 @@ export default function ComposeMessages() {
                     onClick={handleSendMessage}
                     variant="primary"
                     className="h-10 px-4 flex items-center"
-                    disabled={!newMessage || selectedContacts.length === 0 || newMessage.length > MESSAGE_LIMIT || balance < (selectedContacts.length * COST_PER_MESSAGE)}
+                    disabled={!newMessage || selectedContacts.length === 0 || newMessage.length > MESSAGE_LIMIT || balance < (selectedContacts.length * COST_PER_MESSAGE) || isSending}
                   >
-                    <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="22" y1="2" x2="11" y2="13" />
-                      <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                    </svg>
-                    Send Message
+                    {isSending ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                        <span>Sending...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="22" y1="2" x2="11" y2="13" />
+                          <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                        </svg>
+                        Send Message
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>
