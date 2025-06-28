@@ -6,6 +6,7 @@ import { ChevronDownIcon, HorizontaLDots } from "../icons";
 import {
   BookOpen,
   GitGraph,
+  Heart,
   LucideKeySquare,
   MessageCircleMore,
   MessageSquareText,
@@ -94,6 +95,11 @@ const navItems: NavItem[] = [
     name: "Billings",
     icon: <ReceiptText />,
     path: "/billings",
+  },
+  {
+    name: "Sponsor Us",
+    icon: <Heart />,
+    path: "/sponsor",
   },
 ];
 

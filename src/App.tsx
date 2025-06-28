@@ -23,6 +23,7 @@ import Pairing from "./pages/Whatsapp/Pairing";
 import Sendbulk from "./pages/Whatsapp/Sendbulk";
 import LucoflowPage from "./pages/Lucoflow/Lucoflow";
 import Stimulator from "./pages/Developer/Stimulator";
+import Sponsor from "./pages/Sponsor";
 
 // import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react'
 
@@ -63,7 +64,8 @@ export default function App() {
               <Route path="/docs" element={<Docs />} />
               <Route path="/stimulator" element={<Stimulator/>} />
               <Route path="/tutorials" element={<Tutorials />} />
-              <Route path="/lucoflow" element={<LucoflowPage />} />
+                            <Route path="/lucoflow" element={<LucoflowPage />} />
+              <Route path="/sponsor" element={<Sponsor />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
