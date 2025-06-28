@@ -5,6 +5,7 @@ import { ChevronDownIcon, HorizontaLDots } from "../icons";
 
 import {
   BookOpen,
+  GitGraph,
   LucideKeySquare,
   MessageCircleMore,
   MessageSquareText,
@@ -56,7 +57,7 @@ const navItems: NavItem[] = [
   },
   {
     name: "Lucoflow",
-    icon: <SquareDashedKanban />,
+    icon: <GitGraph />,
     path: "/lucoflow",
   },
   {
