@@ -30,9 +30,9 @@ const generateCodeSnippet = (
   message: string
 ): string => {
   const url = 'https://lucosms-api.onrender.com/api/v1/client/send-sms';
-  const safeApiKey = apiKey || 'YOUR_API_KEY';
-  const safeRecipient = recipient || '+1234567890';
-  const safeMessage = message || 'Testing API Request';
+  const safeApiKey = apiKey || 'Luco_API_KEY';
+  const safeRecipient = recipient || '+25670821xxxx';
+  const safeMessage = message || 'Hello, World!';
 
   const payload = {
     message: safeMessage,
@@ -76,9 +76,9 @@ const generateCodeSnippet = (
 };
 
 function Stimulator() {
-  const [apiKey, setApiKey] = useState('Luco_I3jNV4wTVPjpzZvP7mp0fh8m4Oa89Jwk');
-  const [recipient, setRecipient] = useState('+256708215305');
-  const [message, setMessage] = useState('Testing API Request from Stimulator!');
+  const [apiKey, setApiKey] = useState('');
+  const [recipient, setRecipient] = useState('');
+  const [message, setMessage] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState('python');
   const [generatedCode, setGeneratedCode] = useState('');
   const [phoneMessages, setPhoneMessages] = useState<PhoneMessage[]>([]);
@@ -97,8 +97,8 @@ function Stimulator() {
     setError(null);
 
     // IMPORTANT: Replace with your actual Gemini API Key
-    const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY';
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+    const GEMINI_API_KEY = "AIzaSyBefEfnVTBw2BjHSoPgRx372NEuxh0irbM";
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
 
     const prompt = `Generate a code snippet in ${language} to send an SMS using the Lucosms API. 
     API Endpoint: https://lucosms-api.onrender.com/api/v1/client/send-sms

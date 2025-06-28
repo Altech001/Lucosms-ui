@@ -39,7 +39,7 @@ const SimulatorSidePanel: React.FC<SimulatorSidePanelProps> = ({
           className="fixed top-0 right-0 h-full w-96 bg-white dark:bg-gray-800 shadow-lg z-100 flex flex-col border-l border-gray-200 dark:border-gray-700"
         >
           <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-semibold">API Controls</h2>
+            <h2 className="text-lg font-semibold">Lucosms API Controls</h2>
             <button onClick={onClose} className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
               <X className="w-6 h-6" />            </button>
           </div>

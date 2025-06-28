@@ -32,8 +32,16 @@ function Backup() {
     severity: "success",
   });
   const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const fetchFiles = useCallback(async () => {
+  const fetchFiles = useCallback(async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      const cachedFiles = localStorage.getItem("cachedFiles");
+      if (cachedFiles) {
+        setFiles(JSON.parse(cachedFiles));
+      }
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -60,6 +68,7 @@ function Backup() {
 
       const data = (await response.json()) as S3File[];
       setFiles(data || []);
+      localStorage.setItem("cachedFiles", JSON.stringify(data || []));
     } catch (err: unknown) {
       const message =
         err instanceof Error
@@ -75,6 +84,12 @@ function Backup() {
   useEffect(() => {
     fetchFiles();
   }, [fetchFiles]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchFiles(true);
+    setIsRefreshing(false);
+  };
 
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -185,73 +200,63 @@ function Backup() {
         )}
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="mb-6 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
               Luco File Backup
             </h2>
             <div className="flex items-center gap-4">
-              <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-                <button
-                  onClick={() => setViewMode("list")}
-                  className={`p-2 rounded-md transition-colors ${
-                    viewMode === "list"
-                      ? "bg-white dark:bg-gray-600 shadow-sm"
-                      : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                  }`}
-                >
-                  <svg
-                    className="w-5 h-5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => setViewMode("grid")}
-                  className={`p-2 rounded-md transition-colors ${
-                    viewMode === "grid"
-                      ? "bg-white dark:bg-gray-600 shadow-sm"
-                      : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                  }`}
-                >
-                  <svg
-                    className="w-5 h-5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M3 3h7v7H3V3zM14 3h7v7h-7V3zM14 14h7v7h-7v-7zM3 14h7v7H3v-7z"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="flex items-center gap-2 px-4 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 cursor-pointer">
-                  <UploadFile className="w-5 h-5" />
-                  Upload File
-                  <input
-                    type="file"
-                    hidden
-                    onChange={handleFileUpload}
-                    disabled={uploading}
-                  />
-                </label>
-                {uploading && (
-                  <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 disabled:opacity-50"
+              >
+                {isRefreshing ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Refreshing...
+                  </>
+                ) : (
+                  'Refresh'
                 )}
+              </button>
+              <label
+                htmlFor="file-upload"
+                className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                <UploadFile className="w-5 h-5" />
+                {uploading ? "Uploading..." : "Upload File"}
+              </label>
+              <input
+                id="file-upload"
+                type="file"
+                className="hidden"
+                onChange={handleFileUpload}
+                disabled={uploading}
+              />
+              <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`px-3 py-1 rounded-md text-sm ${
+                    viewMode === 'grid'
+                      ? 'bg-white dark:bg-gray-600 shadow'
+                      : 'text-gray-600 dark:text-gray-300'
+                  }`}
+                >
+                  Grid
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 py-1 rounded-md text-sm ${
+                    viewMode === 'list'
+                      ? 'bg-white dark:bg-gray-600 shadow'
+                      : 'text-gray-600 dark:text-gray-300'
+                  }`}
+                >
+                  List
+                </button>
               </div>
             </div>
           </div>
