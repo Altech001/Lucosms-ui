@@ -52,6 +52,9 @@ import ChatIcon from "./chat.svg?react";
 import MoreDotIcon from "./moredot.svg?react";
 import AlertHexaIcon from "./alert-hexa.svg?react";
 import ErrorHexaIcon from "./info-hexa.svg?react";
+import WifiIcon from './WifiIcon';
+import SignalIcon from './SignalIcon';
+import BatteryIcon from './BatteryIcon';
 
 export {
   ErrorHexaIcon,
@@ -108,4 +111,7 @@ export {
   HorizontaLDots,
   ChevronUpIcon,
   ChatIcon,
+  WifiIcon,
+  SignalIcon,
+  BatteryIcon,
 };

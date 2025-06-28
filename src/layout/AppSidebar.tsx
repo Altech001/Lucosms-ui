@@ -86,6 +86,7 @@ const navItems: NavItem[] = [
     subItems: [
       { name: "API Keys", path: "/developer", pro: true },
       { name: "Docs", path: "/docs", pro: true },
+      { name: "Stimulator", path: "/stimulator", pro: true },
     ],
   },
   {

@@ -213,7 +213,7 @@ const SidePanel: React.FC<SidePanelProps> = ({ isOpen, onClose }) => {
           animate={{ x: 0 }}
           exit={{ x: "100%" }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="fixed top-0 right-0 h-full w-96 bg-white dark:bg-gray-800 shadow-lg z-50 border-l border-gray-200 dark:border-gray-700 flex flex-col"
+          className="fixed top-0 right-0 h-full w-96 bg-white dark:bg-gray-800 shadow-lg z-100 border-l border-gray-200 dark:border-gray-700 flex flex-col"
         >
           <div className="p-4 flex-shrink-0">
             <div className="flex items-center justify-between mb-6">

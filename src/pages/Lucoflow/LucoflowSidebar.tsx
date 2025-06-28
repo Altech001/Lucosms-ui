@@ -99,13 +99,13 @@ const LucoflowSidebar: React.FC<LucoflowSidebarProps> = ({
           animate={{ x: 0 }}
           exit={{ x: "100%" }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
-          className="fixed top-0 right-0 h-full w-96 bg-white dark:bg-gray-800/95 dark:backdrop-blur-sm border-l border-gray-200 dark:border-gray-700 shadow-2xl flex flex-col z-50"
+          className="fixed top-0 right-0 h-full w-96 bg-white dark:bg-gray-800/95 dark:backdrop-blur-sm border-l border-gray-200 dark:border-gray-700 shadow-2xl flex flex-col z-100"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
               <Bot size={20} className="mr-3 text-blue-500" />
-              AI Flow Generator
+              Luco AI Flow Generator
             </h2>
             <button
               type="button"
