@@ -99,10 +99,6 @@ const Pairing = () => {
         }
     };
 
-    // const HandleReconnect = () => {
-    //     window.location.reload();
-    // };
-
     const isConnected = connectionStatus === 'Connected';
 
     const getStatusIndicator = () => {
