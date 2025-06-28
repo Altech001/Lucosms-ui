@@ -36,6 +36,7 @@ const minimapStyle = {
 };
 
 const SidePanel: React.FC = () => {
+  // Force re-evaluation to clear build cache
   const [nodes, , onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
