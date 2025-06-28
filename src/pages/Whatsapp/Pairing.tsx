@@ -19,21 +19,6 @@ const Pairing = () => {
             transports: ['websocket'], // Force WebSocket transport for reliability
         });
 
-        // Check for cached QR code on initial load
-        const cachedQrCode = localStorage.getItem('qrCodeCache');
-        if (cachedQrCode) {
-            const { url, expiry } = JSON.parse(cachedQrCode);
-            if (new Date().getTime() < expiry) {
-                console.log('Using cached QR code:', url);
-                setQrCodeUrl(url);
-                setConnectionStatus('QR Code Ready');
-                setActiveTab('qr');
-            } else {
-                console.log('Cached QR code expired');
-                localStorage.removeItem('qrCodeCache');
-            }
-        }
-
         socket.on('connect', () => {
             console.log('Socket.IO connected:', socket.id);
             setConnectionStatus('Waiting for Status...');
@@ -45,10 +30,9 @@ const Pairing = () => {
                     if (data.status === 'CONNECTED') {
                         setConnectionStatus('Connected');
                         setQrCodeUrl(null);
-                        localStorage.removeItem('qrCodeCache'); // Clear cache on connection
                     } else if (data.status === 'DISCONNECTED' || data.status === 'AUTHENTICATION_FAILURE') {
                         setConnectionStatus('Disconnected');
-                    } else if (!qrCodeUrl) { // Only update if no QR is displayed
+                    } else {
                         setConnectionStatus('Awaiting QR Code...');
                     }
                 })
@@ -63,9 +47,6 @@ const Pairing = () => {
             setQrCodeUrl(url);
             setConnectionStatus('QR Code Ready');
             setActiveTab('qr');
-            // Cache the new QR code for 2 minutes
-            const expiry = new Date().getTime() + 2 * 60 * 1000;
-            localStorage.setItem('qrCodeCache', JSON.stringify({ url, expiry }));
         });
 
         socket.on('status', (status: string) => {
@@ -73,7 +54,6 @@ const Pairing = () => {
             setConnectionStatus(status);
             if (status === 'Connected') {
                 setQrCodeUrl(null);
-                localStorage.removeItem('qrCodeCache'); // Clear cache on connection
             }
         });
 
@@ -101,7 +81,7 @@ const Pairing = () => {
             console.log('Disconnecting Socket.IO');
             socket.disconnect();
         };
-    }, [qrCodeUrl]);
+    }, []);
 
     const handleDisconnect = async () => {
         setIsLoading(true);
