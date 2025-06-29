@@ -16,12 +16,6 @@ interface Status {
   } | null;
 }
 
-interface Log {
-  timestamp: string;
-  message: string;
-  type: 'info' | 'error' | 'status' | 'success';
-}
-
 const Pairing: React.FC = () => {
   const [status, setStatus] = useState<Status>({
     isConnected: false,
@@ -30,69 +24,49 @@ const Pairing: React.FC = () => {
     user: null,
     lastMessage: null
   });
-  const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'qr' | 'settings'>('qr');
-  const [logs, setLogs] = useState<Log[]>([]);
-
-  const addLog = (message: string, type: Log['type'] = 'info') => {
-    setLogs(prev => [
-      ...prev,
-      {
-        timestamp: new Date().toISOString(),
-        message,
-        type
-      }
-    ]);
-  };
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // Check connection status
-    const checkStatus = async () => {
+    const interval = setInterval(async () => {
       try {
+        setIsLoading(true);
         const status = await whatsappService.getStatus();
         setStatus(status);
-        
-        const log: Log = {
-          timestamp: new Date().toLocaleTimeString(),
-          type: 'status',
-          message: `Connection status updated: ${status.isConnected ? 'Connected' : 'Disconnected'}`
-        };
-        setLogs(prev => [log, ...prev]);
       } catch (error) {
-        console.error('Error checking status:', error);
-        const log: Log = {
-          timestamp: new Date().toLocaleTimeString(),
-          type: 'error',
-          message: `Error checking status: ${error instanceof Error ? error.message : 'Unknown error'}`
-        };
-        setLogs(prev => [log, ...prev]);
+        console.error('Error fetching status:', error);
+      } finally {
+        setIsLoading(false);
       }
-    };
-    checkStatus();
+    }, 2000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const handleConnect = async () => {
     try {
-      addLog('Connecting to WhatsApp...');
+      setIsLoading(true);
       await whatsappService.connect();
       
       const status = await whatsappService.getStatus();
       setStatus(status);
       
       if (status.isConnected) {
-        addLog(`Connected successfully as ${status.user?.name}`);
+        console.log(`Connected successfully as ${status.user?.name}`);
       } else {
-        addLog('Connection failed');
+        console.log('Connection failed');
       }
     } catch (error) {
       console.error('Error connecting:', error);
       setStatus(prev => ({ ...prev, isConnected: false }));
-      addLog(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleDisconnect = async () => {
     try {
+      setIsLoading(true);
       await whatsappService.disconnect();
       
       setStatus({
@@ -102,14 +76,11 @@ const Pairing: React.FC = () => {
         user: null,
         lastMessage: null
       });
-      setRecipient('');
-      setMessage('');
-      setMessageStatus('');
-      setLogs([]);
       window.location.reload();
     } catch (error) {
       console.error('Error disconnecting:', error);
-      addLog(`Error disconnecting: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 

@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
-import { whatsappService, Status, MessageResult } from '../../services/whatsappService';
+import { whatsappService } from '../../services/whatsappService';
 import {
   Send,
   LoaderCircle,
@@ -136,7 +135,15 @@ const Sendbulk = () => {
       const results = await Promise.all(
         whatsappNumbers.map(async (whatsappNumber) => {
           try {
-            const result = await whatsappService.sendMessage(whatsappNumber, message);
+            // Format the phone number for WhatsApp
+            const formattedNumber = whatsappNumber.replace(/^\+/, '').replace(/[^0-9]/g, '');
+            const whatsappNumberWithCountry = `+256${formattedNumber}`;
+            
+            // Set the recipient and message in the WhatsApp service
+            whatsappService.setRecipient(whatsappNumberWithCountry);
+            whatsappService.setMessage(message);
+            
+            const result = await whatsappService.sendMessage();
             
             // Ensure we got a proper response
             if (!result?.success) {
