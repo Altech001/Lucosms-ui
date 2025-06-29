@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
+import { whatsappService, Status, MessageResult } from '../../services/whatsappService';
 import {
   Send,
   LoaderCircle,
@@ -109,49 +111,74 @@ const Sendbulk = () => {
       });
       return;
     }
-    setIsSending(true);
-    setStatus({
-      type: "info",
-      message: `Sending to ${selectedNumbers.length} recipients...`,
-    });
 
     try {
-      const response = await fetch(
-        "https://lucowap.onrender.com/api/send-bulk",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            numbers: selectedNumbers,
-            message: message,
-          }),
-        }
+      // Format phone numbers according to WhatsApp requirements
+      const formattedNumbers = selectedNumbers.map((number) => {
+        // Clean the number
+        const cleanedNumber = number.trim().replace(/[^+\d]/g, "");
+
+        // Add country code if not present (Uganda +256)
+        const hasCountryCode = cleanedNumber.startsWith("+");
+        return hasCountryCode ? cleanedNumber : `+256${cleanedNumber}`;
+      });
+
+      // Format for WhatsApp API
+      const whatsappNumbers = formattedNumbers.map((number) => `${number}@c.us`);
+
+      setIsSending(true);
+      setStatus({
+        type: "info",
+        message: `Sending to ${selectedNumbers.length} recipients...`,
+      });
+
+      // Send messages using WhatsApp service
+      const results = await Promise.all(
+        whatsappNumbers.map(async (whatsappNumber) => {
+          try {
+            const result = await whatsappService.sendMessage(whatsappNumber, message);
+            
+            // Ensure we got a proper response
+            if (!result?.success) {
+              throw new Error(result?.error || 'Message sending failed');
+            }
+            
+            return {
+              success: true,
+              number: whatsappNumber,
+              error: null
+            };
+          } catch (error) {
+            console.error('Failed to send message:', error);
+            return {
+              success: false,
+              number: whatsappNumber,
+              error: error instanceof Error ? error.message : 'Failed to send message'
+            };
+          }
+        })
       );
 
-      const result = await response.json();
-
-      if (response.ok) {
+      // Process results
+      const failed = results.filter((r: { success: boolean }) => !r.success);
+      if (failed.length === 0) {
         setStatus({
           type: "success",
-          message:
-            result.message ||
-            `Successfully sent to ${selectedNumbers.length} recipients.`,
+          message: `Successfully sent to ${selectedNumbers.length} recipients.`,
         });
         setSelectedNumbers([]);
         setMessage("");
       } else {
+        const failedNumbers = failed.map(f => f.number).join(', ');
         setStatus({
           type: "error",
-          message: result.message || "An unknown error occurred.",
+          message: `Failed to send to ${failed.length} recipients: ${failedNumbers}`,
         });
       }
     } catch (error) {
       setStatus({
         type: "error",
-        message:
-          "Failed to connect to the server. Please ensure it is running.",
+        message: "An error occurred while sending messages.",
       });
       console.error("Sending failed:", error);
     } finally {
