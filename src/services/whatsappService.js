@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = 'https://kbot-w3y8.onrender.com';
+const BASE_URL = 'https://fc22-102-85-251-67.ngrok-free.app';
 
 // Constants for API endpoints
 const ENDPOINTS = {
