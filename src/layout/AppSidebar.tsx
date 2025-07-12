@@ -8,12 +8,11 @@ import {
   GitGraph,
   Heart,
   LucideKeySquare,
-  MessageCircleMore,
   MessageSquareText,
   ReceiptText,
   SquareDashedKanban,
   TimerIcon,
-  VideoIcon,
+  VideoIcon
 } from "lucide-react";
 
 import { useSidebar } from "../context/SidebarContext";
@@ -31,10 +30,10 @@ const navItems: NavItem[] = [
     icon: <BookOpen />,
     name: "Home",
     path: "/",
-    subItems: [
-      { name: "Dashboard", path: "/", pro: false },
-      { name: "Topup", path: "/topup", pro: false }
-    ],
+    // subItems: [
+    //   { name: "Dashboard", path: "/", pro: false },
+    //   { name: "Topup", path: "/topup", pro: false }
+    // ],
   },
   {
     icon: <MessageSquareText />,
@@ -42,15 +41,15 @@ const navItems: NavItem[] = [
     path: "/compose",
   },
 
-  {
-    name: "Whatsapp Chat",
-    icon: <MessageCircleMore />,
-    path: "/wchat",
-    subItems: [
-      { name: "LucoChat", path: "/wchat", pro: true },
-      { name: "Send Bulk", path: "/wchat/sendbulk", pro: true },
-    ],
-  },
+  // {
+  //   name: "Whatsapp Chat",
+  //   icon: <MessageCircleMore />,
+  //   path: "/wchat",
+  //   subItems: [
+  //     { name: "LucoChat", path: "/wchat", pro: true },
+  //     { name: "Send Bulk", path: "/wchat/sendbulk", pro: true },
+  //   ],
+  // },
   {
     icon: <SquareDashedKanban />,
     name: "SMS Templates",
