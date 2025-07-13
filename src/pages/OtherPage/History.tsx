@@ -48,7 +48,7 @@ function History() {
       const skip = (currentPage - 1) * itemsPerPage;
       const limit = itemsPerPage;
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/user/api/v1/sms_history?skip=${skip}&limit=${limit}`, // Replace with your API endpoint
+        `${import.meta.env.VITE_API_URL}/user/api/v1/sms_history?skip=${skip}&limit=${limit}`,
         {
           method: "GET",
           headers: {
@@ -195,7 +195,7 @@ function History() {
                 {paginatedHistoryData.length === 0 ? (
                   <TableRow>
                     <TableCell className="py-4 text-center text-gray-500">
-                      No history found
+                      No history found ??
                     </TableCell>
                   </TableRow>
                 ) : (

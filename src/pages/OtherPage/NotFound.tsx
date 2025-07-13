@@ -24,7 +24,7 @@ export default function NotFound() {
           />
 
           <p className="mt-10 mb-6 text-base text-gray-700 dark:text-gray-400 sm:text-lg">
-            The Page You are Looking For is Not Here ):
+            The Page You are Looking For is Not Here Look ):
           </p>
 
           <Link
