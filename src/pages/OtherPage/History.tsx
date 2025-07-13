@@ -48,9 +48,7 @@ function History() {
       const skip = (currentPage - 1) * itemsPerPage;
       const limit = itemsPerPage;
       const response = await fetch(
-        `${
-          import.meta.env.VITE_API_URL
-        }/your-history-api-endpoint?skip=${skip}&limit=${limit}`, // Replace with your API endpoint
+        `${import.meta.env.VITE_API_URL}/user/api/v1/sms_history?skip=${skip}&limit=${limit}`, // Replace with your API endpoint
         {
           method: "GET",
           headers: {
