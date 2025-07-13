@@ -24,6 +24,7 @@ import Sendbulk from "./pages/Whatsapp/Sendbulk";
 import LucoflowPage from "./pages/Lucoflow/Lucoflow";
 import Stimulator from "./pages/Developer/Stimulator";
 import Sponsor from "./pages/Sponsor";
+import History from "./pages/OtherPage/History";
 
 // import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react'
 
@@ -57,6 +58,7 @@ export default function App() {
               <Route path="/wchat/sendbulk" element={<Sendbulk />} />
               <Route path="/compose" element={<ComposeMessages />} />
               <Route path="/billings" element={<Billings />} />
+              <Route path="/history" element={<History />} />
               <Route path="/schedules" element={<Schedules />} />
               <Route path="/backup" element={<Backup />} />
               <Route path="/restore" element={<Restore />} />
@@ -64,7 +66,7 @@ export default function App() {
               <Route path="/docs" element={<Docs />} />
               <Route path="/stimulator" element={<Stimulator/>} />
               <Route path="/tutorials" element={<Tutorials />} />
-                            <Route path="/lucoflow" element={<LucoflowPage />} />
+              <Route path="/lucoflow" element={<LucoflowPage />} />
               <Route path="/sponsor" element={<Sponsor />} />
             </Route>
 

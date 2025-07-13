@@ -6,7 +6,6 @@ import { ChevronDownIcon, HorizontaLDots } from "../icons";
 import {
   BookOpen,
   GitGraph,
-  Heart,
   LucideKeySquare,
   MessageSquareText,
   ReceiptText,
@@ -15,6 +14,7 @@ import {
   VideoIcon
 } from "lucide-react";
 
+import { HistoryRounded, Money } from "@mui/icons-material";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
 
@@ -56,24 +56,30 @@ const navItems: NavItem[] = [
     path: "/templates",
   },
   {
-    name: "Lucoflow",
-    icon: <GitGraph />,
-    path: "/lucoflow",
-  },
-  {
     name: "Schedules",
     icon: <TimerIcon />,
     path: "/schedules",
-
+    
   },
-    {
-    name: "BackUp & Restore",
-    icon: <BookOpen />,
-    path: "/backup",
-    subItems: [
-      { name: "Backup", path: "/backup", pro: true },
-      { name: "Restore", path: "/restore", pro: true },
-    ],
+  {
+    name: "Lucoflow",
+    icon: <GitGraph />,
+    path: "/lucoflow",
+  }
+  ,
+  //   {
+  //   name: "BackUp & Restore",
+  //   icon: <BookOpen />,
+  //   path: "/backup",
+  //   subItems: [
+  //     { name: "Backup", path: "/backup", pro: true },
+  //     { name: "Restore", path: "/restore", pro: true },
+  //   ],
+  // },
+  {
+    name: "History",
+    icon: <HistoryRounded />,
+    path: "/history",
   },
   {
     name: "Tutorials",
@@ -96,9 +102,9 @@ const navItems: NavItem[] = [
     path: "/billings",
   },
   {
-    name: "Sponsor Us",
-    icon: <Heart />,
-    path: "/sponsor",
+    name: "Topup",
+    icon: <Money />,
+    path: "/topup",
   },
 ];
 
