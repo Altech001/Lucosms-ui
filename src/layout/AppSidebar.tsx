@@ -14,7 +14,7 @@ import {
   VideoIcon
 } from "lucide-react";
 
-import { HistoryRounded, Money } from "@mui/icons-material";
+import { Money } from "@mui/icons-material";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
 
@@ -76,11 +76,11 @@ const navItems: NavItem[] = [
   //     { name: "Restore", path: "/restore", pro: true },
   //   ],
   // },
-  {
-    name: "History",
-    icon: <HistoryRounded />,
-    path: "/history",
-  },
+  // {
+  //   name: "History",
+  //   icon: <HistoryRounded />,
+  //   path: "/history",
+  // },
   {
     name: "Tutorials",
     icon: <VideoIcon />,
