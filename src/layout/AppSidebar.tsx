@@ -8,7 +8,7 @@ import {
   MessageSquareText,
   ReceiptText,
   SquareDashedKanban,
-  VideoIcon
+  // VideoIcon
 } from "lucide-react";
 
 
@@ -91,12 +91,12 @@ const navItems: NavItem[] = [
     path: "/billings",
   },
   
-  {
-    name: "Tutorials",
-    icon: <VideoIcon />,
-    path: "/tutorials",
-  }
-  ,
+  // {
+  //   name: "Tutorials",
+  //   icon: <VideoIcon />,
+  //   path: "/tutorials",
+  // }
+  // ,
 ];
 
 const AppSidebar: React.FC = () => {
