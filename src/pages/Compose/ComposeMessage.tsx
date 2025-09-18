@@ -38,7 +38,7 @@ interface Template {
 }
 
 // API Functions
-const GEMINI_API_KEY = "AIzaSyBefEfnVTBw2BjHSoPgRx372NEuxh0irbM";
+const GEMINI_API_KEY = "AIzaSyA08IKrb6jtuvNVEcCcE4c8w96VjbuE0tY";
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
 const formatUgandanPhoneNumber = (number: string): { isValid: boolean; formattedNumber: string | null; error?: string } => {
