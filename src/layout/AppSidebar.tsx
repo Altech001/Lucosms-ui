@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 
-import { HistoryRounded } from "@mui/icons-material";
+import { HistoryRounded, PaymentRounded } from "@mui/icons-material";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
 
@@ -91,12 +91,12 @@ const navItems: NavItem[] = [
     path: "/billings",
   },
   
-  // {
-  //   name: "Tutorials",
-  //   icon: <VideoIcon />,
-  //   path: "/tutorials",
-  // }
-  // ,
+  {
+    name: "Payments & Plans",
+    icon: <PaymentRounded />,
+    path: "/payments",
+  }
+  ,
 ];
 
 const AppSidebar: React.FC = () => {

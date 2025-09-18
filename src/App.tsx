@@ -15,7 +15,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthGuard } from "./components/Auth/AuthGuard";
 import SignIn from "./pages/AuthPages/SignIn";
 // import Schedules from "./pages/Schedules/Schedules";
-import Tutorials from "./pages/Tutorials/Tutorials";
+// import Tutorials from "./pages/Tutorials/Tutorials";
 // import Topup from "./pages/Home/Topup";
 // import Backup from "./pages/Home/Backup";
 // import Restore from "./pages/Home/Restore";
@@ -25,6 +25,7 @@ import Tutorials from "./pages/Tutorials/Tutorials";
 // import Stimulator from "./pages/Developer/Stimulator";
 // import Sponsor from "./pages/Sponsor";
 import History from "./pages/OtherPage/History";
+import Payment from "./pages/Payment/payment";
 
 // import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react'
 
@@ -65,7 +66,7 @@ export default function App() {
               {/* <Route path="/developer" element={<Developer />} /> */}
               {/* <Route path="/docs" element={<Docs />} /> */}
               {/* <Route path="/stimulator" element={<Stimulator/>} /> */}
-              <Route path="/tutorials" element={<Tutorials />} />
+              <Route path="/payments" element={<Payment />} />
               {/* <Route path="/lucoflow" element={<LucoflowPage />} /> */}
               {/* <Route path="/sponsor" element={<Sponsor />} /> */}
             </Route>
