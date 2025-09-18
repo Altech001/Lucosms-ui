@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Button } from "@/components/ui/button";
 import Badge from "@/utils/ui/badge/Badge";
 import {
@@ -11,7 +10,7 @@ import {
 import { useAuth } from "@clerk/clerk-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useMemo } from "react";
-import { Search, ChevronLeft, ChevronRight, MoreHorizontal, Download, RefreshCw } from "lucide-react";
+import { Search,  ChevronLeft, ChevronRight, MoreHorizontal, Download, RefreshCw } from "lucide-react";
 
 interface HistoryItem {
   id: number | string;
@@ -38,8 +37,8 @@ function History() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "sent" | "pending" | "failed">("all");
-  const [sortBy, setSortBy] = useState<"date" | "name" | "status">("date");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  // const [sortBy, setSortBy] = useState<"date" | "name" | "status">("date");
+  // const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
   // Debounce search query
@@ -53,7 +52,7 @@ function History() {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, statusFilter, sortBy, sortOrder]);
+  }, [debouncedSearch, statusFilter, itemsPerPage]);
 
   const {
     data: historyData = [],
@@ -62,13 +61,39 @@ function History() {
     refetch,
     isFetching
   } = useQuery({
-    queryKey: ["history-data", currentPage, itemsPerPage],
+    queryKey: ["history-data", currentPage, itemsPerPage, debouncedSearch, statusFilter, ],
     queryFn: async () => {
       const token = await getToken();
       const skip = (currentPage - 1) * itemsPerPage;
       const limit = itemsPerPage;
+      
+      // Build query parameters
+      const params = new URLSearchParams({
+        skip: skip.toString(),
+        limit: limit.toString(),
+      });
+      
+      if (debouncedSearch) {
+        params.append('search', debouncedSearch);
+      }
+      
+      if (statusFilter !== 'all') {
+        params.append('status', statusFilter);
+      }
+      
+      // // Add sorting parameters
+      // if (sortBy === 'name') {
+      //   params.append('sortBy', 'userName');
+      // } else if (sortBy === 'status') {
+      //   params.append('sortBy', 'status');
+      // } else {
+      //   params.append('sortBy', 'createdAt');
+      // }
+      
+      // params.append('sortOrder', sortOrder);
+      
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/user/api/v1/sms_history?skip=${skip}&limit=${limit}`,
+        `${import.meta.env.VITE_API_URL}/user/api/v1/sms_history?${params.toString()}`,
         {
           method: "GET",
           headers: {
@@ -87,6 +112,7 @@ function History() {
       return Array.isArray(result) ? result : result.data || [];
     },
     staleTime: 5 * 60 * 1000,
+    enabled: !!getToken, // Only run query if we have auth token
   });
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -97,22 +123,22 @@ function History() {
     setStatusFilter(status);
   };
 
-  const handleSort = (field: "date" | "name" | "status") => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    } else {
-      setSortBy(field);
-      setSortOrder("desc");
-    }
+  // const handleSort = (field: "date" | "name" | "status") => {
+  //   if (sortBy === field) {
+  //     setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+  //   } else {
+  //     setSortBy(field);
+  //     setSortOrder("desc");
+  //   }
+  // };
+
+  const handleExport = () => {
+    // TODO: Implement export functionality
+    console.log("Exporting data...", historyData);
   };
 
-  // Safe string accessor helper
-  const safeString = (value?: string | null): string => {
-    return value || "";
-  };
-
-  // Safe status mapper
-  const getStatusForFilter = (status?: string): string => {
+  // Safe status mapper with proper typing
+  const getStatusForFilter = (status?: string): "sent" | "pending" | "failed" => {
     if (!status) return "pending";
     const lowerStatus = status.toLowerCase();
     if (lowerStatus.includes("sent") || lowerStatus.includes("success")) return "sent";
@@ -141,52 +167,14 @@ function History() {
     }
   };
 
-  // Filtered and sorted data
+  // Since we're now filtering on the backend, processedData is just the fetched data
   const processedData = useMemo(() => {
-    const filtered = historyData.filter((item: HistoryItem) => {
-      const projectName = safeString(item.projectName);
-      const userName = safeString(item.user?.name);
-      const message = safeString(item.message);
-      const phoneNumber = safeString(item.phoneNumber);
-      
-      const matchesSearch = debouncedSearch === "" || [projectName, userName, message, phoneNumber]
-        .some(field => field.toLowerCase().includes(debouncedSearch.toLowerCase()));
-      
+    return historyData.filter((item: HistoryItem) => {
+      // Only filter by status if not already filtered on backend
       const itemStatus = getStatusForFilter(item.status);
-      const matchesStatus = statusFilter === "all" || itemStatus === statusFilter;
-      
-      return matchesSearch && matchesStatus;
+      return statusFilter === "all" || itemStatus === statusFilter;
     });
-
-    // Sort data
-    filtered.sort((a, b) => {
-      let aValue: string | number = "";
-      let bValue: string | number = "";
-
-      switch (sortBy) {
-        case "name":
-          aValue = safeString(a.user?.name).toLowerCase();
-          bValue = safeString(b.user?.name).toLowerCase();
-          break;
-        case "status":
-          aValue = safeString(a.status).toLowerCase();
-          bValue = safeString(b.status).toLowerCase();
-          break;
-        case "date":
-          aValue = new Date(a.timestamp || a.createdAt || "").getTime() || 0;
-          bValue = new Date(b.timestamp || b.createdAt || "").getTime() || 0;
-          break;
-      }
-
-      if (sortOrder === "asc") {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
-    });
-
-    return filtered;
-  }, [historyData, debouncedSearch, statusFilter, sortBy, sortOrder]);
+  }, [historyData, statusFilter]);
 
   const totalPages = Math.ceil(processedData.length / itemsPerPage);
   const paginatedData = processedData.slice(
@@ -195,10 +183,10 @@ function History() {
   );
 
   // Pagination helpers
-  const getVisiblePageNumbers = () => {
+  const getVisiblePageNumbers = (): (number | string)[] => {
     const delta = 2;
-    const range = [];
-    const rangeWithDots = [];
+    const range: number[] = [];
+    const rangeWithDots: (number | string)[] = [];
 
     for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
       range.push(i);
@@ -218,7 +206,7 @@ function History() {
       rangeWithDots.push(totalPages);
     }
 
-    return rangeWithDots;
+    return rangeWithDots.filter((item, index, array) => array.indexOf(item) === index);
   };
 
   // Helper to render team images
@@ -259,12 +247,13 @@ function History() {
     );
   };
 
-  const statusOptions = [
-    { value: "all", label: "All Status", count: processedData.length },
-    { value: "sent", label: "Sent", count: processedData.filter((item: { status: string | undefined; }) => getStatusForFilter(item.status) === "sent").length },
-    { value: "pending", label: "Pending", count: processedData.filter((item: { status: string | undefined; }) => getStatusForFilter(item.status) === "pending").length },
-    { value: "failed", label: "Failed", count: processedData.filter((item: { status: string | undefined; }) => getStatusForFilter(item.status) === "failed").length }
-  ];
+  // Update status options to use actual filtered data counts
+  const statusOptions = useMemo(() => [
+    { value: "all" as const, label: "All Status", count: processedData.length },
+    { value: "sent" as const, label: "Sent", count: processedData.filter((item: { status: string | undefined; }) => getStatusForFilter(item.status) === "sent").length },
+    { value: "pending" as const, label: "Pending", count: processedData.filter((item: { status: string | undefined; }) => getStatusForFilter(item.status) === "pending").length },
+    { value: "failed" as const, label: "Failed", count: processedData.filter((item: { status: string | undefined; }) => getStatusForFilter(item.status) === "failed").length }
+  ], [processedData]);
 
   return (
     <div className="space-y-6">
@@ -294,6 +283,7 @@ function History() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={handleExport}
                 className="flex items-center gap-2"
               >
                 <Download className="w-4 h-4" />
@@ -321,9 +311,11 @@ function History() {
             {/* Status Filter */}
             <div className="flex flex-wrap gap-2">
               {statusOptions.map((option) => (
-                <button
+                <Button
                   key={option.value}
-                  onClick={() => handleStatusFilterChange(option.value as any)}
+                  variant={statusFilter === option.value ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleStatusFilterChange(option.value)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                     statusFilter === option.value
                       ? "bg-blue-500 text-white shadow-sm"
@@ -331,14 +323,17 @@ function History() {
                   }`}
                 >
                   {option.label} ({option.count})
-                </button>
+                </Button>
               ))}
             </div>
 
             {/* Items per page */}
             <select
               value={itemsPerPage}
-              onChange={(e) => setItemsPerPage(Number(e.target.value))}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1); // Reset to first page when changing items per page
+              }}
               className="px-4 py-3 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value={5}>5 per page</option>
@@ -382,54 +377,42 @@ function History() {
               <TableHeader>
                 <TableRow className="border-gray-200/60 dark:border-gray-800/60">
                   <TableCell
-                    isHeader
+                    isHeader={true}
                     className="py-4 px-6 font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-                    onClick={() => handleSort("name")}
+                    // onClick={() => handleSort("name")}
                   >
                     <div className="flex items-center gap-2">
                       User
-                      {sortBy === "name" && (
-                        <span className={`transform transition-transform ${sortOrder === "desc" ? "rotate-180" : ""}`}>
-                          ↑
-                        </span>
-                      )}
+                      
                     </div>
                   </TableCell>
-                  <TableCell isHeader className="py-4 px-6 font-semibold text-gray-700 dark:text-gray-300">
+                  <TableCell isHeader={true} className="py-4 px-6 font-semibold text-gray-700 dark:text-gray-300">
                     Project/Message
                   </TableCell>
-                  <TableCell isHeader className="py-4 px-6 font-semibold text-gray-700 dark:text-gray-300">
+                  <TableCell isHeader={true} className="py-4 px-6 font-semibold text-gray-700 dark:text-gray-300">
                     Team
                   </TableCell>
                   <TableCell
-                    isHeader
+                    isHeader={true}
                     className="py-4 px-6 font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                     // onClick={() => handleSort("status")}
                   >
                     <div className="flex items-center gap-2">
                       Status
-                      {sortBy === "status" && (
-                        <span className={`transform transition-transform ${sortOrder === "desc" ? "rotate-180" : ""}`}>
-                          ↑
-                        </span>
-                      )}
+                      
                     </div>
                   </TableCell>
-                  <TableCell isHeader className="py-4 px-6 font-semibold text-gray-700 dark:text-gray-300">
+                  <TableCell isHeader={true} className="py-4 px-6 font-semibold text-gray-700 dark:text-gray-300">
                     Details
                   </TableCell>
                   <TableCell
-                    isHeader
+                    isHeader={true}
                     className="py-4 px-6 font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                     // onClick={() => handleSort("date")}
                   >
                     <div className="flex items-center gap-2">
                       Date
-                      {sortBy === "date" && (
-                        <span className={`transform transition-transform ${sortOrder === "desc" ? "rotate-180" : ""}`}>
-                          ↑
-                        </span>
-                      )}
+                      
                     </div>
                   </TableCell>
                 </TableRow>
@@ -437,7 +420,7 @@ function History() {
               <TableBody>
                 {paginatedData.length === 0 ? (
                   <TableRow>
-                    <TableCell className="py-12 text-center text-gray-500 dark:text-gray-400" colSpan={6}>
+                    <TableCell className="py-12 text-center text-gray-500 dark:text-gray-400">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
                           <Search className="w-6 h-6 text-gray-400" />
@@ -550,11 +533,13 @@ function History() {
                 
                 <div className="flex items-center gap-1">
                   {getVisiblePageNumbers().map((pageNum, idx) => (
-                    <button
-                      key={idx}
+                    <Button
+                      key={`page-${idx}`}
+                      variant={pageNum === currentPage ? "default" : "outline"}
+                      size="sm"
                       onClick={() => typeof pageNum === 'number' && setCurrentPage(pageNum)}
                       disabled={pageNum === "..."}
-                      className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                      className={`px-3 py-2 text-sm font-medium ${
                         pageNum === currentPage
                           ? "bg-blue-500 text-white shadow-sm"
                           : pageNum === "..."
@@ -563,7 +548,7 @@ function History() {
                       }`}
                     >
                       {pageNum === "..." ? <MoreHorizontal className="w-4 h-4" /> : pageNum}
-                    </button>
+                    </Button>
                   ))}
                 </div>
                 
