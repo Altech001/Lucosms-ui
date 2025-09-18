@@ -213,7 +213,7 @@ function History() {
   const renderTeamImages = (images?: string[]) => {
     if (!images || images.length === 0) {
       return (
-        <div className="w-8 h-8 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full flex items-center justify-center dark:from-gray-600 dark:to-gray-700">
+        <div className="w-8 h-8 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full flex items-center justify-center dark:border-gray-800 dark:bg-white/[0.03]">
           <span className="text-xs text-gray-500 font-medium">0</span>
         </div>
       );
@@ -258,7 +258,7 @@ function History() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-900/50 rounded-2xl border border-gray-200/60 dark:border-gray-800/60 shadow-sm backdrop-blur-sm">
+      <div className="bg-white dark:border-gray-800 dark:bg-white/[0.03] rounded-2xl border border-gray-200/60  shadow-sm backdrop-blur-sm">
         <div className="p-6 border-b border-gray-200/60 dark:border-gray-800/60">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
