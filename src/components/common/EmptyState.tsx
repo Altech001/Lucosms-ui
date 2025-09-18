@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 
 const EmptyState: React.FC = () => {
   return (
-    <div className="text-center p-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700">
+    <div className="text-center p-12 bg-white dark:bg-gray-800 rounded-sm border border-gray-300 dark:border-gray-700">
       <div className="mx-auto mb-6 h-24 w-24 text-gray-400">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-full w-full" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />

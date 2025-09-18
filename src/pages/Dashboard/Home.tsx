@@ -169,11 +169,11 @@ export default function Home() {
           description="The lucosms is a simple to use dashboard for sending bulky sms."
         />
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-            Welcome, {user?.firstName || "User"}! 👋
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+            Yello, {user?.firstName || "User"}! 👋
           </h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            It looks like you're new here! Send your first message to get
+            Explore your dashboard! Send your first message to get
             started.
           </p>
         </div>
