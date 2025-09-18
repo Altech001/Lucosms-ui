@@ -1,22 +1,21 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "react-router";
+import { useDropzone } from "react-dropzone";
+import * as XLSX from "xlsx";
+import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
+import { useAuth } from "@clerk/clerk-react";
+
+// Components (assuming these exist)
 import PageMeta from "../../utils/common/PageMeta";
 import PageBreadcrumb from "../../utils/common/PageBreadCrumb";
 import Alert from "../../utils/ui/alert/Alert";
 import Button from "../../utils/ui/button/Button";
-import { useDropzone } from "react-dropzone";
-import * as XLSX from "xlsx";
 import { MoreDotIcon } from "../../icons";
 import { Dropdown } from "../../utils/ui/dropdown/Dropdown";
 import { DropdownItem } from "../../utils/ui/dropdown/DropdownItem";
-import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
-import { useAuth } from "@clerk/clerk-react"
 
-
-// Define types
+// Types
 interface Contact {
   name: string;
   role: string;
@@ -38,140 +37,189 @@ interface Template {
 }
 
 // API Functions
-const GEMINI_API_KEY = "AIzaSyA08IKrb6jtuvNVEcCcE4c8w96VjbuE0tY";
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+// const GEMINI_API_KEY = "AIzaSyA08IKrb6jtuvNVEcCcE4c8w96VjbuE0tY";
+// const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
-const formatUgandanPhoneNumber = (number: string): { isValid: boolean; formattedNumber: string | null; error?: string } => {
+interface AlertState {
+  variant: "success" | "error";
+  title: string;
+  message: string;
+}
+
+// Constants
+const MESSAGE_LIMIT = 160;
+const COST_PER_MESSAGE = 32; // UGX per message
+const PHONE_COLUMNS = [
+  "phoneNumber",
+  "phone",
+  "mobile",
+  "contact",
+  "number",
+  "Phone Number",
+  "Mobile Number",
+  "Contact Number",
+  "Phone",
+  "Mobile",
+  "Contact",
+  "Number",
+  "Tel",
+  "Telephone",
+  "Cell",
+];
+
+// Utility functions
+const formatUgandanPhoneNumber = (
+  number: string
+): { isValid: boolean; formattedNumber: string | null; error?: string } => {
   const cleaned = number.replace(/[^\d+]/g, "");
-  if (!cleaned) return { isValid: false, formattedNumber: null, error: "Phone number cannot be empty" };
+  if (!cleaned)
+    return {
+      isValid: false,
+      formattedNumber: null,
+      error: "Phone number cannot be empty",
+    };
 
-  if (cleaned.startsWith("+256") && cleaned.length === 13 && (cleaned.startsWith("+2567") || cleaned.startsWith("+2564"))) {
+  if (
+    cleaned.startsWith("+256") &&
+    cleaned.length === 13 &&
+    /^(\+2567|\+2564)/.test(cleaned)
+  ) {
     return { isValid: true, formattedNumber: cleaned };
   }
-  if (cleaned.startsWith("256") && cleaned.length === 12 && (cleaned.startsWith("2567") || cleaned.startsWith("2564"))) {
+  if (
+    cleaned.startsWith("256") &&
+    cleaned.length === 12 &&
+    /^(2567|2564)/.test(cleaned)
+  ) {
     return { isValid: true, formattedNumber: "+" + cleaned };
   }
-  if (cleaned.startsWith("0") && cleaned.length === 10 && (cleaned[1] === "7" || cleaned[1] === "4")) {
+  if (
+    cleaned.startsWith("0") &&
+    cleaned.length === 10 &&
+    /^0[47]/.test(cleaned)
+  ) {
     return { isValid: true, formattedNumber: "+256" + cleaned.substring(1) };
   }
-  if ((cleaned.startsWith("7") || cleaned.startsWith("4")) && cleaned.length === 9) {
+  if (cleaned.length === 9 && /^[47]/.test(cleaned)) {
     return { isValid: true, formattedNumber: "+256" + cleaned };
   }
-  return { isValid: false, formattedNumber: null, error: "Invalid phone number format. Use +2567XXXXXXXX, 07XXXXXXXX, or 7XXXXXXXX" };
+  return {
+    isValid: false,
+    formattedNumber: null,
+    error: "Invalid phone number format",
+  };
 };
 
-const validateAndImportNumbers = async (numbers: string[]) => {
-  try {
-    const prompt = `
-      I have a list of potentially invalid Ugandan phone numbers: ${numbers.join(", ")}.
-      Extract all valid numbers and convert to +256XXXXXXXXX format (starts with 7 after +256).
-      Return ONLY a comma-separated list of valid numbers, no explanation.
-    `;
-    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
-      }),
-    });
+const validateNumbers = (numbers: string[]): string[] => {
+  const validNumbers = new Set<string>();
 
-    if (!response.ok) throw new Error(`API request failed: ${response.status}`);
-    const data = await response.json();
-    const validatedText = data.candidates[0].content.parts[0].text.trim();
-    const phoneNumbers = validatedText.match(/\+256\d{9}/g) || [];
-    return [...new Set(phoneNumbers)];
-  } catch (error) {
-    throw new Error(`Failed to validate numbers: ${error instanceof Error ? error.message : "Unknown error"}`);
-  }
+  numbers.forEach((number) => {
+    if (!number || typeof number !== "string") return;
+
+    const { isValid, formattedNumber } = formatUgandanPhoneNumber(
+      number.trim()
+    );
+    if (isValid && formattedNumber) {
+      validNumbers.add(formattedNumber);
+    }
+  });
+
+  return Array.from(validNumbers);
 };
 
-
-
-
-// Add new utility function for Excel export
 const exportToExcel = (messages: Message[]) => {
   const data = messages.map((msg) => ({
-    'Message Content': msg.content,
-    'Timestamp': msg.timestamp,
-    'Recipients Count': msg.recipientCount,
-    'Recipients': msg.recipients.map(r => r.phoneNumber).join(', ')
+    "Message Content": msg.content,
+    Timestamp: msg.timestamp,
+    "Recipients Count": msg.recipientCount,
+    Recipients: msg.recipients.map((r) => r.phoneNumber).join(", "),
   }));
 
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Messages');
-  XLSX.writeFile(wb, `lucosms_msg_report${new Date().toISOString().split('T')[0]}.xlsx`);
+  XLSX.utils.book_append_sheet(wb, ws, "Messages");
+  XLSX.writeFile(
+    wb,
+    `lucosms_messages_${new Date().toISOString().split("T")[0]}.xlsx`
+  );
 };
-
-const MESSAGE_LIMIT = 160;
-const COST_PER_MESSAGE = 32; // UGX per message
 
 export default function ComposeMessages() {
   const location = useLocation();
-  const selectedTemplate = (location.state as { selectedTemplate?: Template })?.selectedTemplate;
+  const { getToken } = useAuth();
+  const selectedTemplate = (location.state as { selectedTemplate?: Template })
+    ?.selectedTemplate;
 
+  // State management
   const [messages, setMessages] = useState<Message[]>(() => {
-    const cached = localStorage.getItem('recentMessages');
-    return cached ? JSON.parse(cached) : [];
+    try {
+      const cached = localStorage.getItem("recentMessages");
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
   });
-  const [newMessage, setNewMessage] = useState<string>(
-    selectedTemplate
-      ? selectedTemplate.content.includes("[name]")
-        ? selectedTemplate.content.replace("[name]", prompt("Enter the name:") || "User")
-        : selectedTemplate.content
-      : ""
-  );
+
+  const [newMessage, setNewMessage] = useState<string>(() => {
+    if (selectedTemplate?.content) {
+      if (selectedTemplate.content.includes("[name]")) {
+        const name = prompt("Enter the name:") || "User";
+        return selectedTemplate.content.replace("[name]", name);
+      }
+      return selectedTemplate.content;
+    }
+    return "";
+  });
+
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
   const [inputNumber, setInputNumber] = useState("");
   const [validationError, setValidationError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [balance, setBalance] = useState<number>(0);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [contactsPerPage] = useState(20);
+
+  // UI state
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isAddNumberModalOpen, setIsAddNumberModalOpen] = useState(false);
-  const [alert, setAlert] = useState<{ variant: "success" | "error"; title: string; message: string } | null>(null);
-  const [selectAll, setSelectAll] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [importProgress, setImportProgress] = useState({ total: 0, processed: 0, valid: 0 });
-  const [isImporting, setIsImporting] = useState(false);
-  const [balance, setBalance] = useState<number>(0);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [aiSuggestion, setAiSuggestion] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [selectAll, setSelectAll] = useState(false);
+  const [alert, setAlert] = useState<AlertState | null>(null);
   const [isSending, setIsSending] = useState(false);
-  const [showMagicModal, setShowMagicModal] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState("");
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const { getToken } = useAuth();
+  const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState<ImportProgress>({
+    total: 0,
+    processed: 0,
+    valid: 0,
+  });
 
-
-  const sendSMS = async (recipients: string[], message: string, getToken: () => Promise<string | null>) => {
-  try {
-    const token = await getToken();
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/send_sms`, {
-      method: "POST",
-      headers: { 
-        'Authorization': `Bearer ${token}`,
-      "accept": "application/json", "Content-Type": "application/json" },
-      body: JSON.stringify({ recipient: recipients, message }),
-    });
-
-    const responseData = await response.json();
-    if (!response.ok || responseData.status !== "success") {
-      throw new Error(responseData.message || "Failed to send SMS");
-    }
-    return responseData;
-  } catch (error) {
-    throw new Error(`Error sending SMS: ${error instanceof Error ? error.message : "Unknown error"}`);
-  }
-};
+  interface ImportProgress {
+  total: number;
+  processed: number;
+  valid: number;
+}
 
   // Filter contacts based on search query
   const filteredContacts = contacts.filter(
-    (contact) => 
+    (contact) =>
       contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       contact.phoneNumber.includes(searchQuery)
   );
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredContacts.length / contactsPerPage);
+  const startIndex = (currentPage - 1) * contactsPerPage;
+  const endIndex = startIndex + contactsPerPage;
+  const paginatedContacts = filteredContacts.slice(startIndex, endIndex);
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   // Auto-dismiss alert
   useEffect(() => {
@@ -181,17 +229,174 @@ export default function ComposeMessages() {
     }
   }, [alert]);
 
-  // Handle manual number input
+  // Fetch balance
+  const fetchBalance = useCallback(async () => {
+    try {
+      const token = await getToken();
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/user/api/v1/wallet-balance`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      const data = await response.json();
+      if (response.ok) {
+        setBalance(data.balance || 0);
+      }
+    } catch (error) {
+      console.error("Error fetching balance:", error);
+    }
+  }, [getToken]);
+
+  useEffect(() => {
+    fetchBalance();
+  }, [fetchBalance]);
+
+  // SMS sending function
+  const sendSMS = async (recipients: string[], message: string) => {
+    const token = await getToken();
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/v1/send_sms`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ recipient: recipients, message }),
+      }
+    );
+
+    const responseData = await response.json();
+    if (!response.ok || responseData.status !== "success") {
+      throw new Error(responseData.message || "Failed to send SMS");
+    }
+    return responseData;
+  };
+
+  // Process file import
+  const processFileImport = async (
+    file: File
+  ): Promise<{ success: boolean; validNumbers: string[]; error?: string }> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        try {
+          const data = e.target?.result;
+          if (!data) {
+            resolve({
+              success: false,
+              validNumbers: [],
+              error: "Failed to read file",
+            });
+            return;
+          }
+
+          const workbook = XLSX.read(data, { type: "binary" });
+          const sheetName = workbook.SheetNames[0];
+          const sheet = workbook.Sheets[sheetName];
+          const parsedData = XLSX.utils.sheet_to_json(sheet) as any[];
+
+          const numbers = parsedData
+            .map((row) => {
+              // Try phone columns first
+              for (const col of PHONE_COLUMNS) {
+                if (row[col]) return String(row[col]).trim();
+              }
+
+              // Try any column with phone-like data
+              const values = Object.values(row);
+              for (const value of values) {
+                if (
+                  value &&
+                  typeof value === "string" &&
+                  /[\d+\-\s()]{7,}/.test(value)
+                ) {
+                  return String(value).trim();
+                }
+              }
+              return null;
+            })
+            .filter(
+              (num): num is string =>
+                num !== null && num !== "" && /\d/.test(num)
+            );
+
+          if (numbers.length === 0) {
+            resolve({
+              success: false,
+              validNumbers: [],
+              error: "No phone numbers found in the file",
+            });
+            return;
+          }
+
+          setImportProgress({ total: numbers.length, processed: 0, valid: 0 });
+
+          const validNumbers = validateNumbers(numbers);
+          setImportProgress({
+            total: numbers.length,
+            processed: numbers.length,
+            valid: validNumbers.length,
+          });
+
+          resolve({
+            success: true,
+            validNumbers,
+            error:
+              validNumbers.length === 0
+                ? "No valid Ugandan phone numbers found"
+                : undefined,
+          });
+        } catch (error) {
+          resolve({
+            success: false,
+            validNumbers: [],
+            error: `Failed to process file: ${
+              error instanceof Error ? error.message : "Unknown error"
+            }`,
+          });
+        }
+      };
+
+      reader.onerror = () => {
+        resolve({
+          success: false,
+          validNumbers: [],
+          error: "Failed to read file",
+        });
+      };
+
+      reader.readAsBinaryString(file);
+    });
+  };
+
+  // Event handlers
   const addRecipient = () => {
     const trimmedValue = inputNumber.trim();
     if (!trimmedValue) return;
 
     setValidationError("");
-    const { isValid, formattedNumber, error } = formatUgandanPhoneNumber(trimmedValue);
-    if (isValid && formattedNumber && !selectedContacts.some((c) => c.phoneNumber === formattedNumber)) {
+    const { isValid, formattedNumber, error } =
+      formatUgandanPhoneNumber(trimmedValue);
+    if (
+      isValid &&
+      formattedNumber &&
+      !selectedContacts.some((c) => c.phoneNumber === formattedNumber)
+    ) {
       setSelectedContacts((prev) => [
         ...prev,
-        { name: "Unknown", role: "N/A", phoneNumber: formattedNumber, lastActive: "Just now" },
+        {
+          name: "Unknown",
+          role: "N/A",
+          phoneNumber: formattedNumber,
+          lastActive: "Just now",
+        },
       ]);
       setInputNumber("");
       setIsAddNumberModalOpen(false);
@@ -200,34 +405,35 @@ export default function ComposeMessages() {
     }
   };
 
-  // Handle selecting contacts
   const handleSelectContact = (contact: Contact) => {
-    if (selectedContacts.some(c => c.phoneNumber === contact.phoneNumber)) {
-      setSelectedContacts(selectedContacts.filter((c) => c.phoneNumber !== contact.phoneNumber));
-    } else {
-      setSelectedContacts([...selectedContacts, contact]);
-    }
+    setSelectedContacts((prev) => {
+      const isSelected = prev.some(
+        (c) => c.phoneNumber === contact.phoneNumber
+      );
+      return isSelected
+        ? prev.filter((c) => c.phoneNumber !== contact.phoneNumber)
+        : [...prev, contact];
+    });
   };
 
-  // Handle Select All
   const handleSelectAll = () => {
     if (selectAll) {
       setSelectedContacts([]);
     } else {
+      // Select all contacts from current page or all filtered contacts
       setSelectedContacts([...filteredContacts]);
     }
     setSelectAll(!selectAll);
   };
 
-  // Handle sending a message
   const handleSendMessage = async () => {
     const totalCost = selectedContacts.length * COST_PER_MESSAGE;
-    
+
     if (balance < totalCost) {
       setAlert({
         variant: "error",
         title: "Insufficient Balance",
-        message: `You need ${totalCost} UGX to send this message. Current balance: ${balance} UGX`
+        message: `You need ${totalCost} UGX. Current balance: ${balance} UGX`,
       });
       return;
     }
@@ -236,603 +442,637 @@ export default function ComposeMessages() {
       setAlert({
         variant: "error",
         title: "Message Too Long",
-        message: `Message length exceeds ${MESSAGE_LIMIT} characters limit`
+        message: `Message exceeds ${MESSAGE_LIMIT} character limit`,
       });
       return;
     }
 
-    if (!newMessage || selectedContacts.length === 0) {
-      setAlert({ variant: "error", title: "Error", message: "Select at least one contact and enter a message." });
+    if (!newMessage.trim() || selectedContacts.length === 0) {
+      setAlert({
+        variant: "error",
+        title: "Error",
+        message: "Select contacts and enter a message",
+      });
       return;
     }
 
-    const timestamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     setIsSending(true);
     try {
       const responseData = await sendSMS(
         selectedContacts.map((contact) => contact.phoneNumber),
-        newMessage,
-        getToken
+        newMessage
       );
+
+      const timestamp = new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
       const updatedMessages = [
-        { content: newMessage, timestamp, recipientCount: selectedContacts.length, recipients: selectedContacts },
-        ...messages
-      ];
+        {
+          content: newMessage,
+          timestamp,
+          recipientCount: selectedContacts.length,
+          recipients: [...selectedContacts],
+        },
+        ...messages,
+      ].slice(0, 100); // Keep only last 100 messages
+
       setMessages(updatedMessages);
-      localStorage.setItem('recentMessages', JSON.stringify(updatedMessages.slice(0, 100))); // Cache last 100 messages
+      localStorage.setItem("recentMessages", JSON.stringify(updatedMessages));
+
       setNewMessage("");
       setSelectedContacts([]);
       setSelectAll(false);
+
       setAlert({
         variant: "success",
         title: "Message Sent",
-        message: `Sent to ${responseData.recipients_count} contacts. Cost: UGX ${responseData.total_cost}`,
+        message: `Sent to ${responseData.recipients_count} contacts. Cost: ${responseData.total_cost} UGX`,
       });
-      
-      // Add slight delay before refresh to ensure alert is seen
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
 
+      // Refresh balance after sending
+      setTimeout(() => {
+        fetchBalance();
+      }, 1000);
     } catch (error) {
-      setAlert({ variant: "error", title: "Error", message: error instanceof Error ? error.message : "Failed to send message." });
+      setAlert({
+        variant: "error",
+        title: "Send Failed",
+        message:
+          error instanceof Error ? error.message : "Failed to send message",
+      });
     } finally {
       setIsSending(false);
     }
   };
 
-  // Handle message click
-  const handleMessageClick = (message: Message) => {
-    setSelectedContacts(message.recipients);
-    setSelectAll(message.recipients.length === contacts.length);
-    setNewMessage(""); // Clear the message input when selecting a previous conversation
-  };
-
-  // Handle file upload
   const onDrop = async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (!file) return;
 
     setIsImporting(true);
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const data = e.target?.result;
-      if (!data) {
-        setIsImporting(false);
+
+    try {
+      const result = await processFileImport(file);
+
+      if (!result.success) {
+        setAlert({
+          variant: "error",
+          title: "Import Failed",
+          message: result.error || "Failed to process file",
+        });
         return;
       }
 
-      try {
-        const workbook = XLSX.read(data, { type: "binary" });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const parsedData = XLSX.utils.sheet_to_json(sheet) as any[];
+      const newContacts: Contact[] = result.validNumbers.map((num, index) => ({
+        name: `Contact ${index + 1}`,
+        role: "Imported",
+        phoneNumber: num,
+        lastActive: "Just now",
+      }));
 
-        const numbers = parsedData
-          .map((row) => {
-            // Check for common phone number field names
-            const phoneField = row.phoneNumber || row.phone || row.mobile || row.contact || row.number || 
-                              row["Phone Number"] || row["Mobile Number"] || row["Contact Number"];
-            return phoneField ? String(phoneField) : "";
-          })
-          .filter((num) => /\d/.test(num));
-        
-        setImportProgress({ total: numbers.length, processed: 0, valid: 0 });
-        
-        const validNumbers = await validateAndImportNumbers(numbers);
-        
-        const newContacts: Contact[] = validNumbers.map((num) => ({
-          name: "Contact",
-          role: "N/A",
-          phoneNumber: num as string,
-          lastActive: "Just now",
-        }));
+      const uniqueNewContacts = newContacts.filter(
+        (c) => !contacts.some((p) => p.phoneNumber === c.phoneNumber)
+      );
 
-        const uniqueNewContacts = newContacts.filter(
-          (c) => !contacts.some((p) => p.phoneNumber === c.phoneNumber)
-        );
+      setContacts((prev) => [...prev, ...uniqueNewContacts]);
 
-        setContacts((prev) => [...prev, ...uniqueNewContacts]);
-        setImportProgress({ 
-          total: numbers.length, 
-          processed: numbers.length, 
-          valid: validNumbers.length 
-        });
-        
-        setAlert({ 
-          variant: "success", 
-          title: "Contacts Imported", 
-          message: `Imported ${uniqueNewContacts.length} new contacts from ${file.name}.` 
-        });
-        
-        setTimeout(() => {
-          setIsImporting(false);
-          setIsImportModalOpen(false);
-        }, 1500);
-      } catch (error) {
-        setIsImporting(false);
-        setAlert({ 
-          variant: "error", 
-          title: "Import Failed", 
-          message: `Failed to read file: ${error instanceof Error ? error.message : "Unknown error"}` 
-        });
-      }
-    };
-    reader.readAsBinaryString(file);
+      setAlert({
+        variant: "success",
+        title: "Import Successful",
+        message: `Added ${uniqueNewContacts.length} new contacts. ${
+          result.validNumbers.length - uniqueNewContacts.length
+        } duplicates skipped.`,
+      });
+
+      setTimeout(() => {
+        setIsImportModalOpen(false);
+        setImportProgress({ total: 0, processed: 0, valid: 0 });
+      }, 2000);
+    } catch (error) {
+      setAlert({
+        variant: "error",
+        title: "Import Failed",
+        message: `Error: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      });
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: { "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"], "text/csv": [".csv"] },
-    disabled: isImporting
+    accept: {
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+        ".xlsx",
+      ],
+      "text/csv": [".csv"],
+    },
+    disabled: isImporting,
+    maxFiles: 1,
   });
 
-  // Remove a contact from selected list
-  const removeSelected = (contact: Contact) => {
-    setSelectedContacts(selectedContacts.filter((c) => c.phoneNumber !== contact.phoneNumber));
-    if (selectAll) setSelectAll(false);
-  };
-
-  // Add function to fetch balance
-  const fetchBalance = async () => {
-    const token = await getToken();
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/user/api/v1/wallet-balance`,{
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-      const data = await response.json();
-      setBalance(data.balance);
-    } catch (error) {
-      console.error('Error fetching balance:', error);
-    }
-  };
-
-  // Add useEffect to fetch balance
-  useEffect(() => {
-    fetchBalance();
-  }, []);
-
-  // Add function to clear all messages
   const handleClearAllMessages = () => {
-    if (window.confirm('Are you sure you want to delete all messages?')) {
+    if (window.confirm("Delete all message history?")) {
       setMessages([]);
-      localStorage.removeItem('recentMessages');
+      localStorage.removeItem("recentMessages");
     }
   };
 
-  // Add AI message generation function
-  const generateAIMessage = async (prompt: string) => {
-    try {
-      setIsGenerating(true);
-      const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ 
-            parts: [{ 
-              text: `Generate a Simple professional SMS message for the following prompt: ${prompt}. Keep it under 160 characters.`
-            }] 
-          }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 200 },
-        }),
-      });
-
-      const data = await response.json();
-      const generatedText = data.candidates[0].content.parts[0].text.trim();
-      setNewMessage(generatedText);
-      setShowMagicModal(false);
-    } catch (error) {
-      setAlert({
-        variant: "error",
-        title: "Generation Failed",
-        message: "Failed to generate message. Please try again."
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  // Add typing assistance
-  const handleMessageTyping = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    setNewMessage(value);
-
-    // Clear previous timeout
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-
-    // Set new timeout for AI suggestions
-    typingTimeoutRef.current = setTimeout(async () => {
-      if (value.length > 10) {
-        try {
-          const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ 
-                parts: [{ 
-                  text: `Based on this partial SMS: "${value}", suggest a professional completion in 1-2 words:`
-                }] 
-              }],
-              generationConfig: { temperature: 0.3, maxOutputTokens: 50 },
-            }),
-          });
-          const data = await response.json();
-          setAiSuggestion(data.candidates[0].content.parts[0].text.trim());
-        } catch (error) {
-          console.error("Failed to get suggestion:", error);
-        }
-      } else {
-        setAiSuggestion("");
-      }
-    }, 500);
-  };
-
-  // Clean up typing timeout
-  useEffect(() => {
-    return () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Add emoji click handler
   const onEmojiClick = (emojiData: EmojiClickData) => {
     setNewMessage((prev) => prev + emojiData.emoji);
     setShowEmojiPicker(false);
   };
 
+  const remainingChars = MESSAGE_LIMIT - newMessage.length;
+  const totalCost = selectedContacts.length * COST_PER_MESSAGE;
+  const canSend =
+    newMessage.trim() &&
+    selectedContacts.length > 0 &&
+    remainingChars >= 0 &&
+    balance >= totalCost &&
+    !isSending;
+
   return (
     <>
-      <PageMeta title="LucoSMS - Compose Messages" description="Compose and send SMS messages using LucoSMS." />
+      <PageMeta
+        title="Compose Messages - LucoSMS"
+        description="Send SMS messages to multiple contacts"
+      />
       <PageBreadcrumb pageTitle="Compose Messages" />
-      
+
       {alert && (
         <div className="fixed top-20 right-4 z-50 w-80 shadow-lg">
-          <Alert variant={alert.variant} title={alert.title} message={alert.message} showLink={false} />
+          <Alert
+            variant={alert.variant}
+            title={alert.title}
+            message={alert.message}
+            showLink={false}
+          />
         </div>
       )}
 
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-120px)] gap-4">
+      <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-120px)]">
         {/* Contacts Sidebar */}
-        <div className="w-full lg:w-1/3 rounded-lg border border-gray-200 p-4 overflow-hidden flex flex-col shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Contacts ({contacts.length})</h3>
-            <div className="flex items-center gap-2">
-              <Button 
-                variant="primary" 
-                className="h-8 px-3 text-xs font-medium"
-                onClick={() => setIsAddNumberModalOpen(true)}
-              >
-                Add Number
-              </Button>
-              <div className="relative">
-                <button 
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+        <div className="w-full lg:w-1/3 bg-white rounded-xl border border-gray-200  dark:border-gray-800 dark:bg-white/[0.03] shadow-lg overflow-hidden flex flex-col">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Contacts ({contacts.length})
+              </h3>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setIsAddNumberModalOpen(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
-                  <MoreDotIcon className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 size-5" />
-                </button>
-                <Dropdown isOpen={isDropdownOpen} onClose={() => setIsDropdownOpen(false)} className="w-40 p-2">
-                  <DropdownItem 
-                    onItemClick={() => setIsImportModalOpen(true)} 
-                    className="flex w-full text-gray-500 rounded-lg hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
+                  Add Number
+                </Button>
+                <div className="relative">
+                  <button
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   >
-                    Import Contacts
-                  </DropdownItem>
-                </Dropdown>
+                    <MoreDotIcon className="w-5 h-5 text-gray-500" />
+                  </button>
+                  <Dropdown
+                    isOpen={isDropdownOpen}
+                    onClose={() => setIsDropdownOpen(false)}
+                  >
+                    <DropdownItem
+                      onItemClick={() => setIsImportModalOpen(true)}
+                    >
+                      Import Contacts
+                    </DropdownItem>
+                  </Dropdown>
+                </div>
+              </div>
+            </div>
+
+            {/* Search */}
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search contacts..."
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              />
+              <div className="absolute left-3 top-2.5">
+                <svg
+                  className="w-5 h-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
               </div>
             </div>
           </div>
 
-          <div className="relative mb-3">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search contacts..."
-              className="w-full rounded-lg border border-gray-200 pl-9 pr-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
-            <svg className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-            </svg>
-          </div>
+          {/* Select All */}
+          {filteredContacts.length > 0 && (
+            <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+              <div className="flex items-center justify-between">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectAll}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="ml-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Select All ({filteredContacts.length})
+                  </span>
+                </label>
+                {selectedContacts.length > 0 && (
+                  <span className="text-xs text-blue-600 font-medium">
+                    {selectedContacts.length} selected
+                  </span>
+                )}
+              </div>
+              {totalPages > 1 && (
+                <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Showing {startIndex + 1}-
+                  {Math.min(endIndex, filteredContacts.length)} of{" "}
+                  {filteredContacts.length} contacts
+                </div>
+              )}
+            </div>
+          )}
 
-          <div className="flex items-center mb-2  rounded-md px-3 py-2">
-            <input 
-              type="checkbox" 
-              id="selectAll"
-              checked={selectAll} 
-              onChange={handleSelectAll} 
-              className="w-4 h-4 accent-zinc-500 mr-2 cursor-pointer" 
-            />
-            <label htmlFor="selectAll" className="text-sm font-medium text-gray-800 dark:text-white/90 cursor-pointer">
-              Select All ({filteredContacts.length})
-            </label>
-            {selectedContacts.length > 0 && (
-              <span className="ml-auto text-xs font-medium text-zinc-500">
-                {selectedContacts.length} selected
-              </span>
-            )}
-          </div>
-
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {/* Contacts List */}
+          <div className="flex-1 overflow-y-auto max-h-[calc(100vh-300px)] scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800">
             {filteredContacts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-gray-400 dark:text-gray-500">
-                <svg className="w-12 h-12 mb-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-                <p className="text-sm">{searchQuery ? "No matching contacts" : "No contacts available"}</p>
-                <button 
-                  onClick={() => setIsImportModalOpen(true)}
-                  className="mt-2 text-xs text-zinc-50 hover:text-zinc-900 font-medium"
+              <div className="flex flex-col items-center justify-center h-full text-gray-500 py-8">
+                <svg
+                  className="w-12 h-12 mb-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  Import Contacts
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
+                <p className="text-sm font-medium mb-2">
+                  {searchQuery ? "No matching contacts" : "No contacts yet"}
+                </p>
+                <button
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Import contacts to get started
                 </button>
               </div>
             ) : (
-              filteredContacts.map((contact, index) => (
-                <div
-                  key={index}
-                  className={`flex items-center p-3 ${
-                    selectedContacts.some(c => c.phoneNumber === contact.phoneNumber) 
-                      ? "bg-brand-50 dark:bg-gray-800" 
-                      : "hover:bg-gray-50 dark:hover:bg-gray-800"
-                  } cursor-pointer border-b border-gray-100 dark:border-gray-700 rounded-md mb-1`}
-                  onClick={() => handleSelectContact(contact)}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedContacts.some(c => c.phoneNumber === contact.phoneNumber)}
-                    onChange={() => handleSelectContact(contact)}
-                    className="w-4 h-4 accent-zinc-500 mr-3"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                  <div className="w-8 h-8 bg-brand-100 dark:bg-gray-700 rounded-full flex items-center justify-center text-brand-600 dark:text-brand-400 font-semibold text-sm mr-3">
-                    {contact.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-800 dark:text-white/90">{contact.name}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{contact.phoneNumber}</p>
-                  </div>
+              <>
+                <div className="p-3 space-y-2">
+                  {paginatedContacts.slice(0, 10).map((contact, index) => (
+                    <div
+                      key={startIndex + index}
+                      className={`flex items-center p-3 rounded-lg cursor-pointer transition-colors ${
+                        selectedContacts.some(
+                          (c) => c.phoneNumber === contact.phoneNumber
+                        )
+                          ? "bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800"
+                          : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                      }`}
+                      onClick={() => handleSelectContact(contact)}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedContacts.some(
+                          (c) => c.phoneNumber === contact.phoneNumber
+                        )}
+                        onChange={() => handleSelectContact(contact)}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <div className="ml-3 flex-1">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {contact.name}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {contact.phoneNumber}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="p-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                    <div className="flex items-center justify-between">
+                      <button
+                        onClick={() =>
+                          setCurrentPage((prev) => Math.max(prev - 1, 1))
+                        }
+                        disabled={currentPage === 1}
+                        className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <svg
+                          className="w-4 h-4 mr-1"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 19l-7-7 7-7"
+                          />
+                        </svg>
+                        Previous
+                      </button>
+
+                      <div className="flex items-center space-x-2">
+                        {Array.from(
+                          { length: Math.min(5, totalPages) },
+                          (_, i) => {
+                            let pageNum;
+                            if (totalPages <= 5) {
+                              pageNum = i + 1;
+                            } else if (currentPage <= 3) {
+                              pageNum = i + 1;
+                            } else if (currentPage >= totalPages - 2) {
+                              pageNum = totalPages - 4 + i;
+                            } else {
+                              pageNum = currentPage - 2 + i;
+                            }
+
+                            return (
+                              <button
+                                key={pageNum}
+                                onClick={() => setCurrentPage(pageNum)}
+                                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                                  currentPage === pageNum
+                                    ? "bg-blue-600 text-white"
+                                    : "text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                                }`}
+                              >
+                                {pageNum}
+                              </button>
+                            );
+                          }
+                        )}
+
+                        {totalPages > 5 && currentPage < totalPages - 2 && (
+                          <>
+                            <span className="text-gray-500">...</span>
+                            <button
+                              onClick={() => setCurrentPage(totalPages)}
+                              className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
+                            >
+                              {totalPages}
+                            </button>
+                          </>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() =>
+                          setCurrentPage((prev) =>
+                            Math.min(prev + 1, totalPages)
+                          )
+                        }
+                        disabled={currentPage === totalPages}
+                        className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Next
+                        <svg
+                          className="w-4 h-4 ml-1"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5l7 7-7 7"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
-          {/* Selected Contacts Section */}
+          {/* Selected Contacts Summary */}
           {selectedContacts.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-semibold text-gray-800 dark:text-white/90">Selected ({selectedContacts.length})</h4>
-                <button 
-                  onClick={() => setSelectedContacts([])}
-                  className="text-xs text-red-500 hover:text-red-600 font-medium"
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium text-gray-700 dark:text-gray-300">
+                  {selectedContacts.length} contacts selected
+                </span>
+                <button
+                  onClick={() => {
+                    setSelectedContacts([]);
+                    setSelectAll(false);
+                  }}
+                  className="text-blue-600 hover:text-blue-700 font-medium"
                 >
-                  Clear All
+                  Clear
                 </button>
-              </div>
-              <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto custom-scrollbar">
-                {selectedContacts.map((contact, index) => (
-                  <div key={index} className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-full px-3 py-1">
-                    <span className="text-xs text-gray-800 dark:text-white/90 mr-1">{contact.phoneNumber}</span>
-                    <button
-                      onClick={() => removeSelected(contact)}
-                      className="text-gray-500 hover:text-red-500"
-                    >
-                      <svg className="w-3 h-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
               </div>
             </div>
           )}
         </div>
 
-        {/* Chat Area */}
-        <div className="w-full lg:w-2/3 rounded-lg border border-gray-200 flex flex-col shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
-          {/* Chat Header */}
+        {/* Message Compose Area */}
+        <div className="flex-1 bg-white  rounded-xl border border-gray-200 dark:border-gray-800 dark:bg-white/[0.03] shadow-sm flex flex-col">
+          {/* Header */}
           <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <h4 className="text-base font-semibold text-gray-800 dark:text-white/90">
-              {selectedContacts.length > 0 ? (
-                <>
-                  Messaging <span className="text-brand-500">{selectedContacts.length}</span> {selectedContacts.length === 1 ? 'contact' : 'contacts'}
-                </>
-              ) : (
-                "New Message"
-              )}
-            </h4>
-          </div>
-          
-          {/* Messages Container */}
-          <div className="flex-1 overflow-y-auto p-4 bg-gray-50 dark:bg-gray-900 custom-scrollbar">
-            {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-gray-400 dark:text-gray-500">
-                <svg className="w-16 h-16 mb-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
-                <p className="text-lg font-medium mb-1">No messages yet</p>
-                <p className="text-sm text-center max-w-md">
-                  Select contacts and send your first message. Your conversation history will appear here.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex justify-end mb-2 gap-2">
-                  <Button
-                    onClick={handleClearAllMessages}
-                    variant="outline"
-                    className="h-8 px-3 text-xs font-medium flex items-center gap-2 text-red-500 hover:text-red-600"
-                  >
-                    <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                    </svg>
-                    Delete All
-                  </Button>
+            <div className="flex items-center justify-between">
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {selectedContacts.length > 0
+                  ? `Composing to ${selectedContacts.length} contact${
+                      selectedContacts.length === 1 ? "" : "s"
+                    }`
+                  : "New Message"}
+              </h4>
+              {messages.length > 0 && (
+                <div className="flex gap-2">
                   <Button
                     onClick={() => exportToExcel(messages)}
                     variant="outline"
-                    className="h-8 px-3 text-xs font-medium flex items-center gap-2"
+                    size="sm"
                   >
-                    <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                      <polyline points="7 10 12 15 17 10" />
-                      <line x1="12" y1="15" x2="12" y2="3" />
-                    </svg>
-                    Export Messages
+                    Export
+                  </Button>
+                  <Button
+                    onClick={handleClearAllMessages}
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    Clear All
                   </Button>
                 </div>
+              )}
+            </div>
+          </div>
+
+          {/* Messages History */}
+          <div className="flex-1 overflow-y-auto p-4 bg-gray-50 dark:border-gray-800 dark:bg-white/[0.03]">
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                <svg
+                  className="w-16 h-16 mb-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
+                </svg>
+                <p className="text-lg font-medium mb-2">No messages yet</p>
+                <p className="text-sm text-center max-w-md">
+                  Your sent messages will appear here. Select contacts and
+                  compose your first message.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
                 {messages.map((message, index) => (
                   <div
                     key={index}
-                    className="flex flex-col p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg cursor-pointer transition-colors"
-                    onClick={() => handleMessageClick(message)}
+                    className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 shadow-sm"
                   >
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center">
-                        <div className="bg-brand-100 dark:bg-brand-900 text-brand-600 dark:text-brand-400 text-xs font-bold rounded-full w-8 h-8 flex items-center justify-center">
+                        <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-sm font-bold">
                           SMS
                         </div>
-                        <div className="ml-2">
-                          <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                            To {message.recipientCount} {message.recipientCount === 1 ? "contact" : "contacts"}
+                        <div className="ml-3">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            To {message.recipientCount} recipient
+                            {message.recipientCount === 1 ? "" : "s"}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{message.timestamp}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {message.timestamp}
+                          </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                          <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-                          </svg>
-                        </button>
-                        <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                          <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="3 6 5 6 21 6" />
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                          </svg>
-                        </button>
-                      </div>
                     </div>
-                    <div className="rounded-lg bg-white dark:bg-gray-800 p-3 shadow-sm border border-gray-100 dark:border-gray-700">
-                      <p className="text-sm text-gray-800 dark:text-white/90 whitespace-pre-wrap">{message.content}</p>
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
+                      <p className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
+                        {message.content}
+                      </p>
                     </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
-          
-          {/* Message Input */}
+
+          {/* Compose Input */}
           <div className="p-4 border-t border-gray-200 dark:border-gray-700">
             {selectedContacts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-4 text-gray-500 dark:text-gray-400">
-                <p className="text-sm mb-2">Select contacts to send a message</p>
-                <Button 
-                  variant="primary" 
-                  className="h-9 px-3 text-xs font-medium"
+              <div className="text-center py-8">
+                <p className="text-gray-500 mb-4">
+                  Select contacts to start composing
+                </p>
+                <Button
                   onClick={() => setIsAddNumberModalOpen(true)}
+                  variant="primary"
                 >
-                  Add Number
+                  Add Phone Number
                 </Button>
               </div>
             ) : (
-              <div className="flex flex-col gap-2">
+              <div className="space-y-3">
                 <div className="relative">
                   <textarea
                     value={newMessage}
-                    onChange={handleMessageTyping}
+                    onChange={(e) => setNewMessage(e.target.value)}
                     placeholder="Type your message here..."
-                    className={`w-full rounded-lg border ${
-                      newMessage.length > MESSAGE_LIMIT ? 'border-red-500' : 'border-gray-200'
-                    } p-3 pr-20 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-brand-500`}
-                    rows={3}
-                    maxLength={MESSAGE_LIMIT}
+                    className={`w-full p-3 pr-12 rounded-lg border ${
+                      remainingChars < 0 ? "border-red-300" : "border-gray-300"
+                    } dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                    rows={4}
                   />
-                  {aiSuggestion && (
-                    <div className="absolute top-3 left-3 text-sm text-gray-400 pointer-events-none">
-                      {newMessage}{aiSuggestion}
-                    </div>
-                  )}
-                  <div className="absolute right-3 bottom-3 flex items-center gap-2">
+                  <div className="absolute right-3 bottom-3">
                     <button
-                      onClick={() => setShowMagicModal(true)}
-                      className="text-gray-400 hover:text-brand-500 transition-colors"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600"
                       type="button"
-                      title="Generate message with AI"
                     >
-                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M8 3H4.5C3.67157 3 3 3.67157 3 4.5V8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                        <path d="M16 3H19.5C20.3284 3 21 3.67157 21 4.5V8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                        <path d="M16 21H19.5C20.3284 21 21 20.3284 21 19.5V16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                        <path d="M8 21H4.5C3.67157 21 3 20.3284 3 19.5V16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                        <path d="M12 8L12 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                        <path d="M16 12L8 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                      </svg>
+                      😊
                     </button>
-                    <div className="relative">
-                      <button
-                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                        type="button"
-                      >
-                        😊
-                      </button>
-                      {showEmojiPicker && (
-                        <div className="absolute bottom-10 right-0">
-                          <EmojiPicker
-                            onEmojiClick={onEmojiClick}
-                            theme={Theme.DARK}
-                            width={300}
-                            height={400}
-                          />
-                        </div>
-                      )}
-                    </div>
+                    {showEmojiPicker && (
+                      <div className="absolute bottom-10 right-0 z-50">
+                        <EmojiPicker
+                          onEmojiClick={onEmojiClick}
+                          theme={Theme.DARK}
+                          width={300}
+                          height={400}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    <span className={newMessage.length > MESSAGE_LIMIT ? 'text-red-500' : ''}>
-                      {MESSAGE_LIMIT - newMessage.length} characters remaining
+
+                {/* Message Stats */}
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-4 text-gray-500 dark:text-gray-400">
+                    <span
+                      className={
+                        remainingChars < 0 ? "text-red-500 font-medium" : ""
+                      }
+                    >
+                      {remainingChars} characters remaining
                     </span>
-                    {selectedContacts.length > 0 && (
-                      <span className="ml-2">
-                        • Cost: {selectedContacts.length * COST_PER_MESSAGE} UGX
-                      </span>
-                    )}
-                    <span className="ml-2">
-                      • Balance: {balance} UGX
-                    </span>
+                    <span>Cost: {totalCost} UGX</span>
+                    <span>Balance: {balance} UGX</span>
                   </div>
+
                   <Button
                     onClick={handleSendMessage}
+                    disabled={!canSend}
                     variant="primary"
-                    className="h-10 px-4 flex items-center"
-                    disabled={!newMessage || selectedContacts.length === 0 || newMessage.length > MESSAGE_LIMIT || balance < (selectedContacts.length * COST_PER_MESSAGE) || isSending}
+                    className="min-w-[120px]"
                   >
                     {isSending ? (
                       <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                        <span>Sending...</span>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Sending...
                       </div>
                     ) : (
                       <>
-                        <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="22" y1="2" x2="11" y2="13" />
-                          <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                        <svg
+                          className="w-4 h-4 mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                          />
                         </svg>
                         Send Message
                       </>
@@ -843,66 +1083,69 @@ export default function ComposeMessages() {
             )}
           </div>
         </div>
+      </div>
 
-        {/* Add Number Modal */}
-        {isAddNumberModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="w-full max-w-md rounded-xl bg-white p-6 dark:bg-gray-900">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="text-lg font-semibold text-gray-800 dark:text-white/90">Add Phone Number</h4>
-                <button
-                  onClick={() => {
-                    setIsAddNumberModalOpen(false);
-                    setInputNumber("");
-                    setValidationError("");
-                  }}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+      {/* Add Number Modal */}
+      {isAddNumberModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-800 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Add Phone Number
+              </h4>
+              <button
+                onClick={() => {
+                  setIsAddNumberModalOpen(false);
+                  setInputNumber("");
+                  setValidationError("");
+                }}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </div>
-              
-              <div className="mb-4">
-                <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Phone Number
                 </label>
-                <div className="relative">
-                  <input
-                    id="phoneNumber"
-                    type="text"
-                    value={inputNumber}
-                    onChange={(e) => {
-                      setInputNumber(e.target.value);
-                      setValidationError("");
-                    }}
-                    onKeyDown={(e) => e.key === "Enter" && addRecipient()}
-                    placeholder="+2567XXXXXXXX"
-                    className="w-full rounded-lg border border-gray-200 p-3 pl-12 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  />
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                    <span className="text-gray-500 dark:text-gray-400">
-                      <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                      </svg>
-                    </span>
-                  </div>
-                </div>
+                <input
+                  type="text"
+                  value={inputNumber}
+                  onChange={(e) => {
+                    setInputNumber(e.target.value);
+                    setValidationError("");
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && addRecipient()}
+                  placeholder="+256700000000"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
                 {validationError && (
-                  <p className="mt-1 text-sm text-red-500">{validationError}</p>
+                  <p className="mt-1 text-sm text-red-600">{validationError}</p>
                 )}
               </div>
-              
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4">
-                <h5 className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Accepted Formats:
+
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                <h5 className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Supported Formats:
                 </h5>
                 <ul className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                  <li>• +2567XXXXXXXX (Local format)</li>
-                  <li>• 2567XXXXXXXX (Without + sign)</li>
-                  <li>• 07XXXXXXXX (Uganda local format)</li>
-                  {/* <li>• 7XXXXXXXX (Without leading zero)</li> */}
+                  <li>• +256700000000 (International)</li>
+                  <li>• 0700000000 (Local with 0)</li>
+                  <li>• 700000000 (Local without 0)</li>
                 </ul>
               </div>
 
@@ -913,193 +1156,147 @@ export default function ComposeMessages() {
                     setInputNumber("");
                     setValidationError("");
                   }}
-                  variant="primary"
+                  variant="outline"
                   className="flex-1"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={addRecipient}
+                  disabled={!inputNumber.trim()}
                   variant="primary"
                   className="flex-1"
-                  disabled={!inputNumber.trim()}
                 >
                   Add Number
                 </Button>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Import Contacts Modal */}
-        {isImportModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="w-full max-w-lg rounded-xl bg-white p-6 dark:bg-gray-900">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="text-lg font-semibold text-gray-800 dark:text-white/90">Import Contacts</h4>
-                <button
-                  onClick={() => setIsImportModalOpen(false)}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                  disabled={isImporting}
-                >
-                  <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </div>
-              
-              {isImporting ? (
-                <div className="p-6 flex flex-col items-center">
-                  <div className="w-16 h-16 border-4 border-t-brand-500 border-r-brand-300 border-b-brand-200 border-l-brand-100 rounded-full animate-spin mb-4"></div>
-                  <h5 className="text-base font-medium text-gray-800 dark:text-white/90 mb-1">
-                    Processing Contacts...
-                  </h5>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-                    Validating and importing phone numbers
-                  </p>
-                  {importProgress.total > 0 && (
-                    <div className="w-full max-w-sm">
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-1">
-                        <div 
-                          className="bg-brand-500 h-2.5 rounded-full" 
-                          style={{ width: `${Math.min(100, (importProgress.processed / importProgress.total) * 100)}%` }}
-                        ></div>
-                      </div>
-                      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-                        <span>{importProgress.processed} of {importProgress.total} processed</span>
-                        <span>{importProgress.valid} valid numbers</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <>
-                  <div className="border border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-6 mb-4">
-                    <div 
-                      {...getRootProps()} 
-                      className={`flex flex-col items-center justify-center cursor-pointer py-6 px-4 rounded-lg ${
-                        isDragActive 
-                          ? "border-brand-500 bg-brand-50 dark:bg-gray-800" 
-                          : "border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
-                      }`}
-                    >
-                      <input {...getInputProps()} />
-                      <svg className="w-12 h-12 text-gray-400 dark:text-gray-500 mb-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="17 8 12 3 7 8" />
-                        <line x1="12" y1="3" x2="12" y2="15" />
-                      </svg>
-                      <h5 className="text-base font-medium text-gray-800 dark:text-white/90 mb-1">
-                        {isDragActive ? "Drop your file here" : "Drag & Drop your file here"}
-                      </h5>
-                      <p className="text-sm text-center text-gray-500 dark:text-gray-400 mb-2">
-                        Upload a CSV or Excel file containing phone numbers
-                      </p>
-                      <button className="text-sm text-brand-500 hover:text-brand-600 font-medium">
-                        Browse Files
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-4">
-                    <h5 className="text-sm font-medium text-gray-800 dark:text-white/90 mb-2">
-                      File Requirements:
-                    </h5>
-                    <ul className="text-xs text-gray-500 dark:text-gray-400 space-y-1.5">
-                      <li className="flex items-start">
-                        <span className="mr-2">•</span>
-                        <span>Excel (.xlsx) or CSV (.csv) files are supported</span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="mr-2">•</span>
-                        <span>Include a column named "phoneNumber", "phone", "mobile", "contact", or similar</span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="mr-2">•</span>
-                        <span>Ugandan phone numbers will be automatically validated and formatted</span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="mr-2">•</span>
-                        <span>Duplicate numbers will be automatically filtered out</span>
-                      </li>
-                    </ul>
-                  </div>
-                  
-                  <div className="flex items-center justify-end">
-                    <Button
-                      onClick={() => setIsImportModalOpen(false)}
-                      variant="primary"
-                      className="px-4"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Magic Modal */}
-      {showMagicModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-lg rounded-xl bg-white p-6 dark:bg-gray-900">
+      {/* Import Contacts Modal */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-lg bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-800 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h4 className=" place-content-center text-lg font-semibold text-gray-800 dark:text-white/90">Generate SMS With LucoAI</h4>
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Import Contacts
+              </h4>
               <button
-                onClick={() => setShowMagicModal(false)}
-                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                onClick={() => setIsImportModalOpen(false)}
+                disabled={isImporting}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 disabled:opacity-50"
               >
-                <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Describe your message
-                </label>
-                <textarea
-                  value={aiPrompt}
-                  onChange={(e) => setAiPrompt(e.target.value)}
-                  placeholder="E.g., Write a professional SMS to remind customers about their upcoming appointment"
-                  className="w-full rounded-lg border border-gray-200 p-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  rows={4}
-                />
-              </div>
 
-              <div className="flex justify-end gap-3">
-                <Button
-                  onClick={() => setShowMagicModal(false)}
-                  variant="outline"
-                  className="px-4"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={() => generateAIMessage(aiPrompt)}
-                  variant="primary"
-                  className="px-4"
-                  disabled={!aiPrompt.trim() || isGenerating}
-                >
-                  {isGenerating ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                      Generating...
+            {isImporting ? (
+              <div className="flex flex-col items-center py-8">
+                <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+                <h5 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  Processing File...
+                </h5>
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-4">
+                  Validating phone numbers
+                </p>
+                {importProgress.total > 0 && (
+                  <div className="w-full max-w-sm">
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-3">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            (importProgress.processed / importProgress.total) *
+                              100
+                          )}%`,
+                        }}
+                      />
                     </div>
-                  ) : (
-                    'Generate SMS'
-                  )}
-                </Button>
+                    <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
+                      <span>Processed: {importProgress.processed}</span>
+                      <span>Valid: {importProgress.valid}</span>
+                      <span>Total: {importProgress.total}</span>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            ) : (
+              <div className="space-y-4">
+                <div
+                  {...getRootProps()}
+                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
+                    isDragActive
+                      ? "border-blue-400 bg-blue-50 dark:bg-blue-900/20"
+                      : "border-gray-300 dark:border-gray-600 hover:border-blue-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  }`}
+                >
+                  <input {...getInputProps()} />
+                  <svg
+                    className="w-12 h-12 text-gray-400 mx-auto mb-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                    />
+                  </svg>
+                  <h5 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                    {isDragActive
+                      ? "Drop your file here"
+                      : "Upload Contact File"}
+                  </h5>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                    Drag and drop or click to browse
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    Supports CSV and Excel (.xlsx) files
+                  </p>
+                </div>
+
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                  <h5 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                    File Requirements:
+                  </h5>
+                  <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                    <li>• Include phone numbers in any column</li>
+                    <li>• Ugandan numbers will be auto-validated</li>
+                    <li>• Duplicates are automatically filtered</li>
+                    <li>• Supports various phone number formats</li>
+                  </ul>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    onClick={() => setIsImportModalOpen(false)}
+                    variant="outline"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
     </>
   );
-
 }

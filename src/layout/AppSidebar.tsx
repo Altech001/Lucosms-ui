@@ -5,16 +5,14 @@ import { ChevronDownIcon, HorizontaLDots } from "../icons";
 
 import {
   BookOpen,
-  GitGraph,
-  LucideKeySquare,
   MessageSquareText,
   ReceiptText,
   SquareDashedKanban,
-  TimerIcon,
   VideoIcon
 } from "lucide-react";
 
-import { Money } from "@mui/icons-material";
+
+import { HistoryRounded } from "@mui/icons-material";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
 
@@ -28,12 +26,8 @@ type NavItem = {
 const navItems: NavItem[] = [
   {
     icon: <BookOpen />,
-    name: "Home",
+    name: "Dashboard",
     path: "/",
-    // subItems: [
-    //   { name: "Dashboard", path: "/", pro: false },
-    //   { name: "Topup", path: "/topup", pro: false }
-    // ],
   },
   {
     icon: <MessageSquareText />,
@@ -55,18 +49,18 @@ const navItems: NavItem[] = [
     name: "SMS Templates",
     path: "/templates",
   },
-  {
-    name: "Schedules",
-    icon: <TimerIcon />,
-    path: "/schedules",
+  // {
+  //   name: "Schedules",
+  //   icon: <TimerIcon />,
+  //   path: "/schedules",
     
-  },
-  {
-    name: "Lucoflow",
-    icon: <GitGraph />,
-    path: "/lucoflow",
-  }
-  ,
+  // },
+  // {
+  //   name: "Lucoflow",
+  //   icon: <GitGraph />,
+  //   path: "/lucoflow",
+  // }
+  // ,
   //   {
   //   name: "BackUp & Restore",
   //   icon: <BookOpen />,
@@ -76,36 +70,33 @@ const navItems: NavItem[] = [
   //     { name: "Restore", path: "/restore", pro: true },
   //   ],
   // },
+  {
+    name: "Recent History",
+    icon: <HistoryRounded />,
+    path: "/history",
+  },
   // {
-  //   name: "History",
-  //   icon: <HistoryRounded />,
-  //   path: "/history",
+    //   name: "Developer",
+  //   icon: <LucideKeySquare />,
+  //   path: "/developer",
+  //   subItems: [
+  //     { name: "API Keys", path: "/developer", pro: true },
+  //     { name: "Docs", path: "/docs", pro: true },
+  //     { name: "Stimulator", path: "/stimulator", pro: true },
+  //   ],
   // },
+  {
+    name: "Recent Transactions",
+    icon: <ReceiptText />,
+    path: "/billings",
+  },
+  
   {
     name: "Tutorials",
     icon: <VideoIcon />,
     path: "/tutorials",
-  },
-  {
-    name: "Developer",
-    icon: <LucideKeySquare />,
-    path: "/developer",
-    subItems: [
-      { name: "API Keys", path: "/developer", pro: true },
-      { name: "Docs", path: "/docs", pro: true },
-      { name: "Stimulator", path: "/stimulator", pro: true },
-    ],
-  },
-  {
-    name: "Billings",
-    icon: <ReceiptText />,
-    path: "/billings",
-  },
-  {
-    name: "Topup",
-    icon: <Money />,
-    path: "/topup",
-  },
+  }
+  ,
 ];
 
 const AppSidebar: React.FC = () => {
@@ -304,8 +295,8 @@ const AppSidebar: React.FC = () => {
                 alt="LucoSMS Logo"
                 className="w-8 h-8 text-black rounded-full"
               />
-              <span className="text-lg font-semibold text-gray-900 dark:text-gray-200">
-                LucoSMS
+              <span className="text-lg font-bold border-none  text-gray-900 dark:text-gray-200">
+                Luco-SMS
               </span>
             </div>
           ) : (

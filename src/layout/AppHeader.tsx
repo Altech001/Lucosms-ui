@@ -1,22 +1,16 @@
+import { WalletMinimal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
-import { useSidebar } from "../context/SidebarContext";
 import { useBalance } from "../context/BalanceContext";
+import { useSidebar } from "../context/SidebarContext";
 import { ThemeToggleButton } from "../utils/common/ThemeToggleButton";
 import Button from "../utils/ui/button/Button";
-import { BotIcon, WalletMinimal } from "lucide-react";
-// import AddSmsCreditsModal from "../utils/ui/walletbutton/WalletButton";
-// import AddSmsCreditsModal from "./AddSmsCreditsModal";
 import { UserButton } from "@clerk/clerk-react";
-import LucoBot from "../components/Lucobot/LucoBot"; // Import LucoBot component
 
 
 
 const AppHeader: React.FC = () => {
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
-  // const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isLucoBotOpen, setIsLucoBotOpen] = useState(false); // State for LucoBot pop-up
-
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
   const { balance, isLoading } = useBalance();
   
@@ -36,9 +30,9 @@ const AppHeader: React.FC = () => {
   // const openModal = () => setIsModalOpen(true);
   // const closeModal = () => setIsModalOpen(false);
 
-  const toggleLucoBot = () => { // Function to toggle LucoBot pop-up
-    setIsLucoBotOpen(!isLucoBotOpen);
-  };
+  // const toggleLucoBot = () => { // Function to toggle LucoBot pop-up
+  //   setIsLucoBotOpen(!isLucoBotOpen);
+  // };
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -62,7 +56,7 @@ const AppHeader: React.FC = () => {
       <div className="flex flex-col items-center justify-between grow lg:flex-row lg:px-6">
         <div className="flex items-center justify-between w-full gap-2 px-3 py-3 border-b border-gray-200 dark:border-zinc-900 sm:gap-4 lg:justify-normal lg:border-b-0 lg:px-0 lg:py-4">
           <button
-            className="items-center justify-center w-10 h-10 text-gray-500 border-gray-200 rounded-lg z-99999 dark:border-zinc-800 lg:flex dark:text-gray-400 lg:h-11 lg:w-11 lg:border"
+            className="items-center justify-center w-10 h-10 text-gray-500 border-gray-200 rounded-sm z-99999 dark:border-zinc-800 lg:flex dark:text-gray-400 lg:h-11 lg:w-11 lg:border"
             onClick={handleToggle}
             aria-label="Toggle Sidebar"
           >
@@ -109,8 +103,8 @@ const AppHeader: React.FC = () => {
                 className="w-8 h-8 rounded-full text-black dark:bg-white"
               />
                 {/* <Globe className="w-6 h-6 text-green-600 dark:text-green-400" /> */}
-                <span className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-                  LucoSMS
+                <span className="text-lg font-semibold shadow-2xs text-gray-800 dark:text-gray-200">
+                  Luco-SMS
                 </span>
               </div>
             </div>
@@ -122,8 +116,8 @@ const AppHeader: React.FC = () => {
                 alt="LucoSMS Logo"
                 className="w-8 h-8 rounded-full text-black dark:bg-white"
               />
-                <span className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-                  LucoSMS
+                <span className="text-lg shadow-2xs font-semibold text-gray-800 dark:text-gray-200">
+                  Luco-SMS
                 </span>
               </div>
             </div>
@@ -152,13 +146,14 @@ const AppHeader: React.FC = () => {
           <div className="hidden lg:block">
             <Button
               size="md"
+              className="rounded-sm"
               variant="primary"
               startIcon={<WalletMinimal className="size-5" />}
               // onClick={openModal}
             >
               Wallet:
               <span className="font-bold">
-                {isLoading ? "Loading..." : `UGX ${balance.toLocaleString()}`}
+                {isLoading ? "↻" : `UGX ${balance.toLocaleString()}`}
               </span>
             </Button>
             {/* <AddSmsCreditsModal isOpen={isModalOpen} onClose={closeModal} /> */}
@@ -169,22 +164,14 @@ const AppHeader: React.FC = () => {
             isApplicationMenuOpen ? "flex" : "hidden"
           } items-center justify-between w-full gap-4 px-5 py-4 lg:flex shadow-theme-md lg:justify-end lg:px-0 lg:shadow-none`}
         >
-            <div className="flex items-center gap-2 2xsm:gap-3 border-8 border-gray-200 rounded-full  dark:border-zinc-800 p-2 z-10">
+            <div className="flex items-center gap-2 2xsm:gap-3 border-3 border-gray-200 rounded-full  dark:border-zinc-800 p-2 z-10">
               <UserButton  afterSignOutUrl="/signin"  />
             </div>
           <div className="flex items-center gap-2 2xsm:gap-3">
             <ThemeToggleButton />
           </div>
-          <div
-            className="flex items-center gap-2 2xsm:gap-3 border-8 border-gray-200 rounded-full dark:border-zinc-800 p-2 z-10 cursor-pointer" // Added cursor-pointer and onClick
-            onClick={toggleLucoBot}
-          >
-              {/* <UserButton  afterSignOutUrl="/signin"  /> */}
-              <BotIcon/>
-            </div>
         </div>
       </div>
-      {isLucoBotOpen && <LucoBot />}
     </header>
   );
 };
