@@ -363,7 +363,7 @@ function History() {
                       <Button
                         key={page}
                         onClick={() => handlePageClick(page)}
-                        className={`px-2 py-1 text-xs font-medium rounded-lg ${
+                        className={`px-2 py-1 text-xs font-medium rounded-sm ${
                           currentPage === page
                             ? "bg-blue-500 text-white"
                             : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
